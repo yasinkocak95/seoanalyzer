@@ -1,0 +1,2 @@
+ALTER TABLE "Crawl" ADD COLUMN "score" INTEGER;
+ALTER TABLE "Crawl" ADD COLUMN "checkedRules" JSONB;

@@ -1,0 +1,4 @@
+ALTER TABLE "Page" ADD COLUMN "lang" TEXT;
+ALTER TABLE "Page" ADD COLUMN "viewport" TEXT;
+ALTER TABLE "Page" ADD COLUMN "socialTags" JSONB;
+ALTER TABLE "Page" ADD COLUMN "mixedContent" JSONB;

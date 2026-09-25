@@ -1,0 +1,1 @@
+import{NextResponse}from'next/server';import{db}from'@seo/db';export async function GET(_:Request,{params}:{params:Promise<{id:string}>}){const{id}=await params,c=await db.crawl.findUnique({where:{id},include:{_count:{select:{findings:true,exclusions:true}}}});return c?NextResponse.json(c):NextResponse.json({error:'Tarama bulunamadı.'},{status:404})}

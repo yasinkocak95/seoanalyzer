@@ -1,0 +1,172 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum CrawlStatus {
+  QUEUED
+  RUNNING
+  PAUSED
+  PARTIAL
+  COMPLETED
+  FAILED
+}
+
+enum CrawlUrlStatus {
+  DISCOVERED
+  PROCESSING
+  PROCESSED
+  ERROR
+  EXCLUDED
+  SKIPPED
+}
+
+enum TemplateStatus {
+  SAMPLING
+  SAMPLED
+  MIXED
+}
+
+enum ResponseKind {
+  HTML
+  REDIRECT
+  NON_HTML
+  ERROR
+}
+
+enum Severity {
+  CRITICAL
+  WARNING
+  INFO
+}
+
+model Crawl {
+  id                String      @id @default(cuid())
+  rootUrl           String
+  normalizedHost    String
+  status            CrawlStatus @default(QUEUED)
+  progress          Int         @default(0)
+  processedPages    Int         @default(0)
+  discoveredPages   Int         @default(0)
+  statusMessage     String      @default("Tarama sıraya alındı")
+  error             String?
+  analyzedHtmlPages Int         @default(0)
+  redirectCount     Int         @default(0)
+  pendingUrls       Int         @default(0)
+  errorUrls         Int         @default(0)
+  partialReason     String?
+  score             Int?
+  fullCrawl         Boolean     @default(false)
+  skippedUrls       Int         @default(0)
+  checkedRules      Json?
+  startedAt         DateTime?
+  completedAt       DateTime?
+  createdAt         DateTime    @default(now())
+  pages             Page[]
+  findings          Finding[]
+  exclusions        Exclusion[]
+  crawlUrls         CrawlUrl[]
+  urlTemplates      UrlTemplate[]
+
+  @@index([normalizedHost, createdAt])
+}
+
+model Page {
+  id             String       @id @default(cuid())
+  crawlId        String
+  crawl          Crawl        @relation(fields: [crawlId], references: [id], onDelete: Cascade)
+  url            String
+  statusCode     Int?
+  responseKind   ResponseKind @default(HTML)
+  redirectTarget String?
+  contentType    String?
+  title          String?
+  description    String?
+  canonical      String?
+  robots         String?
+  h1             Json?
+  headings       Json?
+  images         Json?
+  textContent    String?
+  contentHash    String?
+  links          Json?
+  hreflangs      Json?
+  jsonLd         Json?
+  redirectChain  Json?
+  lang           String?
+  viewport       String?
+  socialTags     Json?
+  mixedContent   Json?
+  structure      Json?
+  rendered      Boolean      @default(false)
+  error          String?
+  depth          Int          @default(0)
+  createdAt      DateTime     @default(now())
+
+  @@unique([crawlId, url])
+}
+
+model CrawlUrl {
+  id          String         @id @default(cuid())
+  crawlId     String
+  crawl       Crawl          @relation(fields: [crawlId], references: [id], onDelete: Cascade)
+  url         String
+  normalized  String
+  status      CrawlUrlStatus @default(DISCOVERED)
+  depth       Int            @default(0)
+  sourceUrl   String?
+  fromSitemap Boolean        @default(false)
+  linked      Boolean        @default(false)
+  lastError   String?
+  attempts    Int            @default(0)
+  template    String?
+  updatedAt   DateTime       @updatedAt
+  createdAt   DateTime       @default(now())
+
+  @@unique([crawlId, normalized])
+  @@index([crawlId, status, createdAt])
+  @@index([crawlId, template])
+}
+
+// Otomatik tespit edilen URL şablonu; örneklerin yapısı benzemiyorsa MIXED olur ve tamamı analiz edilir.
+model UrlTemplate {
+  id         String         @id @default(cuid())
+  crawlId    String
+  crawl      Crawl          @relation(fields: [crawlId], references: [id], onDelete: Cascade)
+  pattern    String
+  status     TemplateStatus @default(SAMPLING)
+  similarity Float?
+  createdAt  DateTime       @default(now())
+
+  @@unique([crawlId, pattern])
+}
+
+model Finding {
+  id             String   @id @default(cuid())
+  crawlId        String
+  crawl          Crawl    @relation(fields: [crawlId], references: [id], onDelete: Cascade)
+  code           String
+  severity       Severity
+  title          String
+  description    String
+  recommendation String
+  fingerprint    String
+  affectedUrls   Json
+  evidence       Json
+  createdAt      DateTime @default(now())
+
+  @@index([crawlId, severity])
+  @@index([crawlId, code])
+}
+
+model Exclusion {
+  id      String @id @default(cuid())
+  crawlId String
+  crawl   Crawl  @relation(fields: [crawlId], references: [id], onDelete: Cascade)
+  url     String
+  reason  String
+}

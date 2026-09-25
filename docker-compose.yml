@@ -1,0 +1,60 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: seo
+      POSTGRES_PASSWORD: seo
+      POSTGRES_DB: seo_analyzer
+    ports: ["5432:5432"]
+    volumes: ["postgres_data:/var/lib/postgresql/data"]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U seo -d seo_analyzer"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+  redis:
+    image: redis:7-alpine
+    ports: ["6379:6379"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+  migrate:
+    build: { context: ., target: base }
+    command: npm run db:migrate
+    environment:
+      DATABASE_URL: postgresql://seo:seo@postgres:5432/seo_analyzer?schema=public
+    depends_on:
+      postgres: { condition: service_healthy }
+  web:
+    build: { context: ., target: web }
+    environment:
+      DATABASE_URL: postgresql://seo:seo@postgres:5432/seo_analyzer?schema=public
+      REDIS_URL: redis://redis:6379
+      NEXT_PUBLIC_APP_URL: http://localhost:3000
+      CACHE_TTL_SECONDS: 1800
+      EXPORT_SIGNING_SECRET: yerel-gelistirme-icin-degistirin
+    ports: ["3000:3000"]
+    depends_on:
+      migrate: { condition: service_completed_successfully }
+      redis: { condition: service_healthy }
+  worker:
+    build: { context: ., target: worker }
+    environment:
+      DATABASE_URL: postgresql://seo:seo@postgres:5432/seo_analyzer?schema=public
+      REDIS_URL: redis://redis:6379
+      MAX_DEPTH: 6
+      CRAWL_BATCH_SIZE: 25
+      MAX_CRAWL_DURATION_SECONDS: 21600
+      REQUEST_DELAY_MS: 500
+      REQUEST_TIMEOUT_MS: 15000
+      MAX_RESPONSE_BYTES: 5242880
+      CRAWL_CONCURRENCY: 2
+      ALLOW_LOCAL_TEST_URLS: "false"
+      ENABLE_PLAYWRIGHT: "false"
+    depends_on:
+      migrate: { condition: service_completed_successfully }
+      redis: { condition: service_healthy }
+volumes:
+  postgres_data:

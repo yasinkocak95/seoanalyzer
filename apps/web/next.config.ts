@@ -1,0 +1,1 @@
+import type{NextConfig}from'next';const config:NextConfig={transpilePackages:['@seo/db','@seo/shared'],serverExternalPackages:['pdfkit'],outputFileTracingIncludes:{'/api/crawls/[id]/export/pdf':['../../node_modules/pdfkit/js/data/**/*']},output:'standalone'};export default config;

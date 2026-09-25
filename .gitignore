@@ -1,0 +1,15 @@
+node_modules
+node_modules.*
+.npm-cache*
+.tmp-test
+.next
+dist
+.env
+storage
+coverage
+*.log
+*.tsbuildinfo
+.DS_Store
+.tmp-report
+output
+tmp

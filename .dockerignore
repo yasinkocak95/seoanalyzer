@@ -1,0 +1,9 @@
+node_modules
+node_modules.*
+.npm-cache
+.tmp-test
+.next
+dist
+.git
+storage
+*.log
