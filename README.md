@@ -1,65 +1,67 @@
 # SEO Denetim
 
-Ücretsiz ve kendi sunucunuzda çalışabilen, site çapında SEO analiz uygulaması. URL gönderme, BullMQ kuyruğu, Crawlee taraması, PostgreSQL kaydı, Türkçe rapor ve iki tarama arasında bulgu karşılaştırması uçtan uca çalışır.
+**English** | [Türkçe](README.tr.md)
 
-Uygulama yalnızca SEO sinyallerini inceler; Lighthouse, PageSpeed, hız/Core Web Vitals, erişilebilirlik puanı, Google sıralaması veya gerçek dizin durumunu ölçmez.
+A free, self-hosted, site-wide SEO audit application. URL submission, a BullMQ queue, Crawlee crawling, PostgreSQL storage, Turkish-language reports and finding comparison between two crawls all work end to end.
 
-## Hızlı başlangıç (Docker)
+The application only inspects SEO signals. It does not measure Lighthouse, PageSpeed, speed/Core Web Vitals, accessibility scores, Google rankings or actual index status.
 
-Gereksinimler: Docker Desktop ve Docker Compose.
+## Quick start (Docker)
+
+Requirements: Docker Desktop and Docker Compose.
 
 ```bash
 docker compose up --build
 ```
 
-Servisler sağlıklı olduğunda `http://localhost:3000` adresini açın. İlk imaj kurulumu bağımlılıklar nedeniyle birkaç dakika sürebilir. Durdurmak için `docker compose down` kullanın. Verileri de silmek isterseniz ayrıca `docker compose down -v` komutunu bilinçli olarak çalıştırın.
+Once the services are healthy, open `http://localhost:3000`. The first image build may take a few minutes because of dependencies. Use `docker compose down` to stop. If you also want to delete the data, run `docker compose down -v` deliberately.
 
-## Yerel geliştirme
+## Local development
 
-Node.js 22, PostgreSQL ve Redis gerekir.
+Requires Node.js 22, PostgreSQL and Redis.
 
 ```bash
-copy .env.example .env
+copy .env.example .env   # macOS/Linux: cp .env.example .env
 npm install
 npm run db:generate
 npm run db:migrate
 npm run dev
 ```
 
-Web arayüzü `http://localhost:3000` üzerinde, tarama işçisi aynı terminal grubunda çalışır. Ayrı çalıştırmak isterseniz:
+The web UI runs on `http://localhost:3000` and the crawl worker runs in the same terminal group. To run them separately:
 
 ```bash
 npm run dev -w @seo/web
 npm run dev -w @seo/worker
 ```
 
-## Test ve derleme
+## Tests and build
 
 ```bash
 npm test
 npm run build
 ```
 
-## Yapı
+## Structure
 
-- `apps/web`: Next.js arayüzü ve tarama API’leri
-- `apps/worker`: BullMQ işçisi; Crawlee, robots/sitemap keşfi ve güvenli indirme
-- `packages/rules`: Tarayıcıdan bağımsız, test edilebilir SEO kuralları
-- `packages/shared`: URL normalizasyonu, SSRF koruması ve ortak kuyruk türleri
-- `packages/db`: Prisma şeması ve migration
+- `apps/web`: Next.js UI and crawl APIs
+- `apps/worker`: BullMQ worker; Crawlee, robots/sitemap discovery and safe fetching
+- `packages/rules`: Browser-independent, testable SEO rules
+- `packages/shared`: URL normalization, SSRF protection and shared queue types
+- `packages/db`: Prisma schema and migrations
 
-## Tarama sınırları ve güvenlik
+## Crawl limits and security
 
-Varsayılan tarama aynı hostname, 12 bağlantı derinliği, 2 eşzamanlı istek ve site başına en az 500 ms istek aralığıyla çalışır. Bağlantı kopması, zaman aşımı, 5xx ve 429 gibi geçici hatalar artan beklemeyle 2 kez yeniden denenir; 404 gibi kalıcı hatalar yeniden denenmez. Sabit sayfa sınırı yoktur. URL durumları PostgreSQL'de kalıcı tutulur; tarama duraklatılabilir, sürdürülebilir ve süre korumasına ulaştığında açıkça kısmi olarak raporlanır. 5 MB yanıt ve 15 saniye istek sınırı vardır. `robots.txt` engelleri raporlanır. HTTP(S) dışındaki protokoller, kullanıcı bilgisi içeren URL’ler, özel/yerel/ayrılmış IP’ler ve bunlara çözümlenen alan adları reddedilir; yönlendirme hedefleri tekrar denetlenir.
+By default the crawl stays on the same hostname, with a link depth of 12, 2 concurrent requests and at least 500 ms between requests per site. Transient errors such as dropped connections, timeouts, 5xx and 429 are retried twice with increasing delays; permanent errors such as 404 are not retried. There is no fixed page limit. URL states are persisted in PostgreSQL; a crawl can be paused and resumed, and it is clearly reported as partial when it hits the duration guard. Responses are limited to 5 MB and requests to 15 seconds. `robots.txt` blocks are reported. Non-HTTP(S) protocols, URLs containing credentials, private/local/reserved IPs and domains resolving to them are rejected; redirect targets are re-checked.
 
-### URL şablonu örneklemesi
+### URL template sampling
 
-Varsayılan taramada tekrar eden URL şablonları siteye göre otomatik tespit edilir; klasör adları kodlanmaz. Aynı üst yolu paylaşan ve yalnızca son parçası değişen en az `TEMPLATE_MIN_URLS` (8) adres bir şablon oluşturur (ör. `/urunler/{slug}`, `/cfi/{slug}`). Sayısal/hash parçaları `{id}` olur. Sorgu parametreli adresler, parametre adlarına göre ayrı şablondur (`/liste?kategori={değer}`). Kök seviyedeki sorgusuz sayfalar gruplanmaz. Her şablondan `TEMPLATE_SAMPLE_SIZE` (5) örnek analiz edilir, kalanlar “keşfedildi, analiz edilmedi” olarak kaydedilir ve istek atılmaz. Örneklerin içerik alanındaki CSS sınıfları ve JSON-LD türleri karşılaştırılır; en düşük benzerlik `TEMPLATE_SIMILARITY` (0,5) altındaysa grup farklı sayfa türleri içeriyor sayılır ve tamamı analiz edilir. Başlangıç formundaki “Tam tarama” seçeneği örneklemeyi kapatır.
+In the default crawl, repeating URL templates are detected automatically per site; folder names are not hard-coded. At least `TEMPLATE_MIN_URLS` (8) URLs that share the same parent path and differ only in their last segment form a template (e.g. `/products/{slug}`, `/cfi/{slug}`). Numeric/hash segments become `{id}`. URLs with query parameters form separate templates based on their parameter names (`/list?category={değer}`). Root-level URLs without a query are not grouped. `TEMPLATE_SAMPLE_SIZE` (5) samples are analyzed from each template; the rest are recorded as "discovered, not analyzed" and no requests are sent to them. The CSS classes in the content area and the JSON-LD types of the samples are compared; if the lowest similarity is below `TEMPLATE_SIMILARITY` (0.5), the group is considered to contain different page types and all of its URLs are analyzed. The "Full crawl" option on the start form turns sampling off.
 
-Yerel fixture testi gerektiğinde yalnızca geliştirici `.env` içinde `ALLOW_LOCAL_TEST_URLS=true` yapabilir. Bu seçenek varsayılan olarak kapalıdır ve açık internete sunulan ortamda açılmamalıdır. JavaScript render geçişi `ENABLE_PLAYWRIGHT=true` ile açılır; yalnızca metni neredeyse boş kök sayfada tek sayfalık kontrollü geçiş yapar. Playwright tarayıcı ikilisi gerekiyorsa ayrıca `npx playwright install chromium` çalıştırın.
+When a local fixture test is needed, only a developer may set `ALLOW_LOCAL_TEST_URLS=true` in `.env`. This option is off by default and must not be enabled in an environment exposed to the public internet. The JavaScript rendering pass is enabled with `ENABLE_PLAYWRIGHT=true`; it only performs a controlled single-page pass on a root page whose text is nearly empty. If the Playwright browser binary is needed, also run `npx playwright install chromium`.
 
-Aynı URL için 30 dakikalık tamamlanmış rapor önbelleği vardır.
+Completed reports for the same URL are cached for 30 minutes. The "Yeniden tara" (Rescan) button on the report skips this cache.
 
-## Ortam değişkenleri
+## Environment variables
 
-Tüm seçenekler `.env.example` içinde belgelenmiştir. Üretimde PostgreSQL/Redis parolalarını değiştirin, servisleri internete doğrudan açmayın ve `ALLOW_LOCAL_TEST_URLS=false` bırakın.
+All options are documented in `.env.example`. In production, change the PostgreSQL/Redis passwords, do not expose the services directly to the internet and keep `ALLOW_LOCAL_TEST_URLS=false`.
