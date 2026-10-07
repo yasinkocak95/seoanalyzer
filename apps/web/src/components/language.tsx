@@ -12,7 +12,7 @@ export const useTranslation = () => translator(useLocale());
 export function LanguageSwitcher() {
   const locale = useLocale(), path = usePathname();
   const target = (language: Locale) => path === '/' || path === '/en' || path === '/en/' ? (language === 'en' ? '/en/' : '/') : path;
-  return <div className="flex items-center gap-2 text-xs font-bold" aria-label="Language">
+  return <div className="language-switcher" aria-label="Language">
     {(['tr', 'en'] as const).map(language => <a key={language} href={`/api/language?lang=${language}&returnTo=${encodeURIComponent(target(language))}`} lang={language} aria-current={locale === language ? 'true' : undefined} className={locale === language ? 'text-action underline' : 'text-muted'}>{language.toUpperCase()}</a>)}
   </div>;
 }

@@ -60,7 +60,7 @@ export default async function Report({
     redirects = crawl.pages.filter((p) => p.responseKind === "REDIRECT");
   return (
     <main className="container report-shell py-10">
-      <div className="mb-8 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+      <div className="report-heading mb-8 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
         <div>
           <p className="text-sm font-bold text-action">{translate("m117")}</p>
           <h1 className="mt-2 text-3xl font-black text-brand">{translate("m118")}</h1>
@@ -127,7 +127,7 @@ export default async function Report({
         </div>
       )}
       <ScoreCard locale={locale} score={crawl.score} previous={previous?.score ?? null} />
-      <div className="mb-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="report-kpis mb-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <S locale={locale} i={FileText} l={translate("m062")} n={crawl.processedPages} />
         <S locale={locale} i={FileText} l={translate("m325")} n={crawl.analyzedHtmlPages} />
         <S locale={locale} i={RefreshCcw} l={translate("m024")} n={crawl.redirectCount} />
@@ -248,7 +248,7 @@ export default async function Report({
         {passed ? (
           <>
             <p className="mt-1 text-sm text-muted">{translate('passedSummary',[(passed.length+groups.length).toLocaleString(numberLocale(locale)),passed.length.toLocaleString(numberLocale(locale))])}</p>
-            <div className="card mt-4 grid gap-x-6 gap-y-3 p-5 sm:grid-cols-2 lg:grid-cols-3">
+            <div className="card passed-checks mt-4 grid gap-x-6 gap-y-3 p-5 sm:grid-cols-2 lg:grid-cols-3">
               {passed.map((r) => (
                 <div className="flex items-start gap-2 text-sm" key={r.code}>
                   <CircleCheck
@@ -369,8 +369,8 @@ function ScoreCard({
           : "text-red-600",
     diff = previous === null ? null : score - previous;
   return (
-    <div className="card mb-4 flex flex-wrap items-center gap-6 p-6">
-      <div className={`text-6xl font-black ${color}`}>{score}</div>
+    <div className="card score-card mb-4 flex flex-wrap items-center gap-6 p-6">
+      <div className={`score-ring ${color}`} style={{ '--score-progress': `${score}%` } as React.CSSProperties} role="img" aria-label={`${translate('ui.score')}: ${score}/100`}><div><strong>{score}</strong><span>/ 100</span></div></div>
       <div className="flex-1">
         <b className="block text-lg text-brand">
            {translate("m153")} {scoreLabel(score,locale)}
@@ -413,7 +413,7 @@ function S({
 }) {
   const translate=translator(locale);
   return (
-    <div className="card flex gap-4 p-5">
+    <div className={`card kpi-card kpi-${x} flex gap-4 p-5`}>
       <span className={`grid h-11 w-11 place-items-center rounded-xl ${x}`}>
         <Icon />
       </span>

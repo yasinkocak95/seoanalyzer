@@ -94,6 +94,10 @@ export function Homepage({ locale }: { locale: Locale }) {
           <div><span className={styles.icon}><CircleHelp size={22} /></span><p className={styles.eyebrow}>{copy.faqLabel}</p><h2 className={styles.sectionTitle}>{copy.faqTitle}</h2></div>
           <div className={styles.faqs}>{copy.faqs.map(faq => <details key={faq.q}><summary>{faq.q}<ChevronDown size={18} /></summary><p>{faq.a}</p></details>)}</div>
         </section>
+        <section className={`${styles.container} ${styles.closingCta}`}>
+          <div><p className={styles.eyebrow}>{copy.formLabel}</p><h2>{copy.formTitle}</h2><p>{copy.formDescription}</p></div>
+          <a className={styles.primary} href="#analiz">{copy.freeStart}<ArrowRight size={18} /></a>
+        </section>
         <aside className={`${styles.container} ${styles.scope}`}><Info size={20} /><div><h2>{copy.scopeTitle}</h2><p>{copy.scope}</p></div></aside>
       </main>
     </div>
