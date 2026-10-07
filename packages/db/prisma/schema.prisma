@@ -71,8 +71,34 @@ model Crawl {
   exclusions        Exclusion[]
   crawlUrls         CrawlUrl[]
   urlTemplates      UrlTemplate[]
+  aiAnalyses        AiAnalysis[]
 
   @@index([normalizedHost, createdAt])
+}
+
+enum AiAnalysisStatus {
+  IDLE
+  QUEUED
+  RUNNING
+  COMPLETED
+  FAILED
+}
+
+model AiAnalysis {
+  id          String           @id @default(cuid())
+  crawlId     String
+  crawl       Crawl            @relation(fields: [crawlId], references: [id], onDelete: Cascade)
+  locale      String
+  status      AiAnalysisStatus @default(IDLE)
+  generation  String           @default("")
+  result      Json?
+  model       String?
+  error       String?
+  generatedAt DateTime?
+  updatedAt   DateTime         @updatedAt
+  createdAt   DateTime         @default(now())
+
+  @@unique([crawlId, locale])
 }
 
 model Page {

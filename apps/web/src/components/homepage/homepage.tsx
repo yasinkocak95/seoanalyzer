@@ -2,11 +2,12 @@ import Link from 'next/link';
 import {
   ArrowDownToLine, ArrowRight, Check, CheckCheck, ChevronDown, CircleHelp,
   FileSearch, FileText, GitCompareArrows, Globe2, Image, Info, Link2,
-  ListChecks, SearchCheck, ShieldCheck, SlidersHorizontal,
+  ListChecks, SearchCheck, ShieldCheck, SlidersHorizontal, Sparkles,
 } from 'lucide-react';
 import { StartForm } from '@/components/start-form';
 import { LanguageSwitcher } from '@/components/language';
 import type { Locale } from '@seo/shared/i18n';
+import { translator } from '@seo/shared/i18n';
 import trCopy from './copy.json';
 import enCopy from './copy.en.json';
 import styles from './homepage.module.css';
@@ -16,6 +17,7 @@ const analysisIcons = [SlidersHorizontal, FileSearch, Link2, Image, Globe2, File
 const anchors = ['ozellikler', 'nasil-calisir', 'ekran-goruntuleri', 'sss'];
 
 export function Homepage({ locale }: { locale: Locale }) {
+  const t = translator(locale);
   const copy: typeof trCopy = locale === 'en' ? enCopy : trCopy;
   const homeHref = locale === 'en' ? '/en/' : '/';
   return (
@@ -65,6 +67,10 @@ export function Homepage({ locale }: { locale: Locale }) {
             const Icon = featureIcons[index];
             return <article className={styles.feature} key={feature.title}><span className={styles.icon}><Icon size={21} /></span><h2>{feature.title}</h2><p>{feature.description}</p></article>;
           })}
+        </section>
+        <section className={`${styles.container} ${styles.aiFeature}`}>
+          <div><span className={styles.aiLabel}><Sparkles size={16} />{t('ai.title')} · Claude</span><h2>{t('ai.landingTitle')}</h2><p>{t('ai.landingDescription')}</p></div>
+          <div className={styles.aiFeaturePriorities}>{(['Critical', 'High', 'Medium'] as const).map((priority, i) => <div key={priority}><span>0{i + 1}</span><b>{t(`ai.${priority}`)}</b><ArrowRight size={17} /></div>)}</div>
         </section>
         <section className={`${styles.container} ${styles.analysisSection}`}>
           <div>

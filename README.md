@@ -35,6 +35,16 @@ npm run dev -w @seo/web
 npm run dev -w @seo/worker
 ```
 
+## Claude AI recommendations
+
+Set `ANTHROPIC_API_KEY` in the root server `.env` and run `npm run db:migrate` before starting the updated application. `ANTHROPIC_MODEL` defaults to `claude-sonnet-4-6`. Docker Compose injects the key into the web server and worker only; Claude requests originate in the worker. Never prefix the key with `NEXT_PUBLIC_`.
+
+The key is optional. If absent or blank, the AI card shows a disabled **Coming soon** button. AI APIs return a successful disabled state without touching the AI database or queue, and workers skip existing AI jobs without calling Claude. Crawls, reports and exports remain available. Local web/worker processes reread the root `.env` at request/job time, so adding the key enables the feature automatically; an open disabled card checks availability every 15 seconds without generating an analysis. For Docker's injected environment, apply changed `.env` values with `docker compose up -d --force-recreate web worker` (or mount your server `.env` read-only at `/app/.env` for live file updates).
+
+After a crawl completes, use **Generate AI Recommendations** in the report's **AI Insights** card. A separate BullMQ queue in the existing worker sends a bounded finding summary to Claude's [structured Messages API](https://platform.claude.com/docs/en/build-with-claude/structured-outputs). It returns Critical / High / Medium actions with affected page counts and URL samples calculated from the crawl. Raw HTML, page text, evidence and URL credentials/query values are not sent. Limits: 2,000 findings, 20,000 page references and 100,000 input characters. The Anthropic API is paid separately.
+
+Results are saved per crawl and language (TR/EN). Opening reports and polling status only read saved records; generation occurs on an explicit click. **Regenerate AI Analysis** replaces the result only after success and preserves the previous result on failure. Duplicate clicks share one generation. Temporary failures retry once; missing keys and invalid responses fail with a safe message. Recovery reconciles enqueue gaps and exhausted jobs after outages. Partial crawls retain their existing report and resume behavior; AI becomes available once completed.
+
 ## Tests and build
 
 ```bash

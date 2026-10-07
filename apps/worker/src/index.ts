@@ -4,7 +4,13 @@ import { Redis } from 'ioredis';
 import { CRAWL_QUEUE, type CrawlJob } from '@seo/shared';
 import { db } from '@seo/db';
 import { executeCrawl } from './crawl.js';
+import { loadEnvFile } from 'node:process';
+import { fileURLToPath } from 'node:url';
+import { startAiWorker } from './ai-worker.js';
+try { loadEnvFile(fileURLToPath(new URL('../../../.env', import.meta.url))); }
+catch (error) { if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error; }
 const connection = new Redis(process.env.REDIS_URL ?? 'redis://localhost:6379', { maxRetriesPerRequest: null });
+const aiWorker = startAiWorker(connection);
 const worker = new Worker<CrawlJob>(CRAWL_QUEUE, async job => {
   try {
   const crawl = await db.crawl.findUnique({ where: { id: job.data.crawlId }, select: { status: true } });
@@ -49,6 +55,7 @@ export async function reconcileFailedJobs() {
   }catch(error){console.error('Failed crawl reconciliation deferred',error)}
   finally{recovering=false}
 }
-const recoveryTimer=setInterval(()=>void reconcileFailedJobs(),30000);
+const recoveryTimer=setInterval(()=>{ void reconcileFailedJobs(); void aiWorker.reconcile(); },30000);
 recoveryTimer.unref();
 void reconcileFailedJobs();
+void aiWorker.reconcile();

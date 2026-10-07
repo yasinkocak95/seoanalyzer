@@ -6,6 +6,8 @@ import { db } from "@seo/db";
 import { notFound, redirect } from "next/navigation";
 import { ReportFindings } from "@/components/report-findings";
 import { RescanButton } from "@/components/rescan-button";
+import { AiInsights } from '@/components/ai-insights';
+import { aiSnapshot, idleAiSnapshot } from '@/lib/ai-analysis';
 import { attachTemplates, getTemplates } from "@/lib/templates";
 import { signExport } from "@/lib/report-data";
 import {
@@ -41,6 +43,8 @@ export default async function Report({
   if (!["COMPLETED", "PARTIAL"].includes(crawl.status))
     redirect(`/tarama/${id}`);
   const templates = await getTemplates(id);
+  const aiAvailability = idleAiSnapshot(locale);
+  const aiAnalysis = crawl.status === 'COMPLETED' && aiAvailability.enabled ? await db.aiAnalysis.findUnique({ where: { crawlId_locale: { crawlId: id, locale } } }) : null;
   const groups = attachTemplates(groupFindings(crawl.findings.map(f=>localizeFinding(f,locale))), templates),
     counts = countBySeverity(groups),
     passed = passedRules(crawl.checkedRules, groups)?.map(r=>({...r,title:translate(r.title)}));
@@ -55,7 +59,7 @@ export default async function Report({
     token = signExport(id),
     redirects = crawl.pages.filter((p) => p.responseKind === "REDIRECT");
   return (
-    <main className="container py-10">
+    <main className="container report-shell py-10">
       <div className="mb-8 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
         <div>
           <p className="text-sm font-bold text-action">{translate("m117")}</p>
@@ -145,6 +149,7 @@ export default async function Report({
           />
         )}
       </div>
+      {crawl.status === 'COMPLETED' && <AiInsights key={`${id}-${locale}`} crawlId={id} locale={locale} initial={aiAnalysis ? aiSnapshot(aiAnalysis) : aiAvailability} />}
       <h2 className="text-2xl font-black text-brand">{translate("m064")}</h2>
       <p className="mb-5 mt-1 text-sm text-muted">
          {translate("m130")} </p>

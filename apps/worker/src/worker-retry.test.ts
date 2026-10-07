@@ -2,6 +2,7 @@ import {describe,it,expect,vi,beforeEach} from 'vitest';
 const mocks=vi.hoisted(()=>({findUnique:vi.fn(),updateMany:vi.fn(),execute:vi.fn(),processor:undefined as unknown as (job:any)=>Promise<void>,events:new Map<string,Function>(),getJobs:vi.fn(async()=>[] as any[])}));
 vi.mock('@seo/db',()=>({db:{crawl:{findUnique:mocks.findUnique,updateMany:mocks.updateMany}}}));
 vi.mock('./crawl.js',()=>({executeCrawl:mocks.execute}));
+vi.mock('./ai-worker.js',()=>({startAiWorker:()=>({reconcile:vi.fn()})}));
 vi.mock('ioredis',()=>({Redis:class {on(){return this}}}));
 vi.mock('bullmq',()=>({Queue:class{on(){return this}getJobs(){return mocks.getJobs()}},Worker:class{constructor(_name:string,fn:(job:any)=>Promise<void>){mocks.processor=fn}on(name:string,fn:Function){mocks.events.set(name,fn);return this}}}));
 import {reconcileFailedJobs} from './index.js';

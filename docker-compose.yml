@@ -30,6 +30,7 @@ services:
   web:
     build: { context: ., target: web }
     environment:
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
       DATABASE_URL: postgresql://seo:seo@postgres:5432/seo_analyzer?schema=public
       REDIS_URL: redis://redis:6379
       NEXT_PUBLIC_APP_URL: http://localhost:3000
@@ -42,6 +43,8 @@ services:
   worker:
     build: { context: ., target: worker }
     environment:
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      ANTHROPIC_MODEL: ${ANTHROPIC_MODEL:-claude-sonnet-4-6}
       DATABASE_URL: postgresql://seo:seo@postgres:5432/seo_analyzer?schema=public
       REDIS_URL: redis://redis:6379
       MAX_DEPTH: 6
