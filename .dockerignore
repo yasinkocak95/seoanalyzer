@@ -11,9 +11,6 @@ storage
 .env.*
 !.env.example
 
-# Separate homepage work is outside this audit/deployment.
-apps/web/src/components/homepage
-
 **/node_modules
 **/.next
 **/dist

@@ -13,10 +13,14 @@ services:
     command: ["redis-server", "--appendonly", "yes", "--maxmemory", "192mb", "--maxmemory-policy", "noeviction"]
     volumes: ["redis_data:/data"]
   migrate:
+    build: !reset null
+    image: ${GHCR_IMAGE_PREFIX:-ghcr.io/yasinkocak95/seoanalyzer}-worker:${IMAGE_TAG:-main}
     mem_limit: 512m
     environment:
       DATABASE_URL: ${DATABASE_URL:?DATABASE_URL is required}
   web:
+    build: !reset null
+    image: ${GHCR_IMAGE_PREFIX:-ghcr.io/yasinkocak95/seoanalyzer}-web:${IMAGE_TAG:-main}
     restart: unless-stopped
     mem_limit: 512m
     cpus: 1.0
@@ -34,6 +38,8 @@ services:
       start_period: 30s
       retries: 3
   worker:
+    build: !reset null
+    image: ${GHCR_IMAGE_PREFIX:-ghcr.io/yasinkocak95/seoanalyzer}-worker:${IMAGE_TAG:-main}
     restart: unless-stopped
     mem_limit: 1g
     cpus: 1.0
