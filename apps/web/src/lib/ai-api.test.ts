@@ -1,4 +1,4 @@
-vi.mock('@/lib/access', () => ({ requireCrawl: async () => 'owner', ownerHash: async () => 'owner', sameOrigin: (request: Request) => !request.headers.get('origin') || request.headers.get('origin') === new URL(request.url).origin }));
+vi.mock('@/lib/access', async () => ({ requireCrawl: async () => 'owner', ownerHash: async () => 'owner', sameOrigin: (await import('./request-origin')).sameOrigin }));
 vi.mock('@/lib/rate-limit', () => ({ rateLimit: async () => true }));
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 const mocks = vi.hoisted(() => ({ crawl: { findUnique: vi.fn() }, ai: { findUnique: vi.fn(), upsert: vi.fn(), updateMany: vi.fn() }, add: vi.fn(), locale: 'en' as 'en' | 'tr' }));

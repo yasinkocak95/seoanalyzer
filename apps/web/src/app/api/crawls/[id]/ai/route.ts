@@ -1,5 +1,5 @@
 import { rateLimit } from '@/lib/rate-limit';
-import { requireCrawl } from '@/lib/access';
+import { requireCrawl, sameOrigin } from '@/lib/access';
 import { randomUUID } from 'node:crypto';
 import { NextResponse } from 'next/server';
 import { db } from '@seo/db';
@@ -25,8 +25,7 @@ export async function GET(_request: Request, { params }: Context) {
 export async function POST(request: Request, { params }: Context) {
   const locale = await getLocale(), t = translator(locale), { id } = await params;
   // Paid generation must not be triggered from another site's browser session.
-  const origin = request.headers.get('origin');
-  if ((origin && origin !== new URL(request.url).origin) || request.headers.get('sec-fetch-site') === 'cross-site') return NextResponse.json({ error: t('ai.invalidRequest') }, { status: 403 });
+  if (!sameOrigin(request)) return NextResponse.json({ error: t('ai.invalidRequest') }, { status: 403 });
   const availability = idleAiSnapshot(locale);
   if (!availability.enabled) return NextResponse.json(availability, { headers: { 'Cache-Control': 'no-store' } });
   await requireCrawl(id);

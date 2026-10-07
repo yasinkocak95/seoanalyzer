@@ -1,5 +1,6 @@
 vi.mock('@/lib/access', () => ({ requireCrawl: async () => 'owner', ownerHash: async () => 'owner', sameOrigin: (request: Request) => !request.headers.get('origin') || request.headers.get('origin') === new URL(request.url).origin }));
-vi.mock('@/lib/rate-limit', () => ({ rateLimit: async () => true }));
+const limits = vi.hoisted(() => ({ rate: vi.fn() }));
+vi.mock('@/lib/rate-limit', () => ({ rateLimit: limits.rate }));
 import { describe,it,expect,vi,beforeEach } from 'vitest';
 import { NextRequest } from 'next/server';
 const mocks=vi.hoisted(()=>({
@@ -14,9 +15,20 @@ import { POST } from '../app/api/crawls/route';
 import { POST as control } from '../app/api/crawls/[id]/control/route';
 import { GET as language } from '../app/api/language/route';
 import { proxy } from '../proxy';
-beforeEach(()=>{vi.clearAllMocks();mocks.crawl.findFirst.mockResolvedValue(null);mocks.crawl.create.mockResolvedValue({id:'crawl'});mocks.crawl.updateMany.mockResolvedValue({count:1});mocks.queue.add.mockResolvedValue({id:'crawl'});mocks.queue.getJobs.mockResolvedValue([])});
+beforeEach(()=>{vi.clearAllMocks();limits.rate.mockResolvedValue(true);mocks.crawl.findFirst.mockResolvedValue(null);mocks.crawl.create.mockResolvedValue({id:'crawl'});mocks.crawl.updateMany.mockResolvedValue({count:1});mocks.queue.add.mockResolvedValue({id:'crawl'});mocks.queue.getJobs.mockResolvedValue([])});
 const request=(body:unknown)=>new NextRequest('http://localhost/api/crawls',{method:'POST',body:JSON.stringify(body)});
 describe('queue/API state regressions',()=>{
+ it('blocks global admission even when a fresh workspace is below its individual limit', async () => {
+  limits.rate.mockImplementation(async (key: string) => key !== 'crawl-global');
+  const response = await POST(request({ url: 'https://example.test/' }));
+  expect(response.status).toBe(429); expect(await response.json()).toEqual({ error: 'Too many requests. Please try again later.' });
+  expect(mocks.crawl.create).not.toHaveBeenCalled(); expect(mocks.queue.add).not.toHaveBeenCalled();
+ });
+ it('fails closed with a localized error when admission storage is unavailable', async () => {
+  limits.rate.mockRejectedValue(new Error('private redis address'));
+  const response = await POST(request({ url: 'https://example.test/' }));
+  expect(response.status).toBe(503); expect(await response.text()).not.toContain('private redis'); expect(mocks.crawl.create).not.toHaveBeenCalled();
+ });
  it('does not leave a QUEUED crawl when Redis fails',async()=>{
   mocks.queue.add.mockRejectedValue(new Error('Redis unavailable'));
   const response=await POST(request({url:'https://example.test/'}));
@@ -36,6 +48,11 @@ describe('queue/API state regressions',()=>{
  });
  it('prevents duplicate resumes after an atomic state claim loses',async()=>{
   mocks.crawl.findUnique.mockResolvedValue({id:'crawl',status:'PAUSED'});mocks.crawl.updateMany.mockResolvedValue({count:0});expect((await control(request({action:'resume'}),{params:Promise.resolve({id:'crawl'})})).status).toBe(409);expect(mocks.queue.add).not.toHaveBeenCalled();
+ });
+ it('marks a new resume attempt so old terminal jobs cannot overwrite its state', async () => {
+  mocks.crawl.findUnique.mockResolvedValue({ id: 'crawl', status: 'PAUSED', rootUrl: 'https://example.test/', startedAt: new Date(0) });
+  expect((await control(request({ action: 'resume' }), { params: Promise.resolve({ id: 'crawl' }) })).status).toBe(200);
+  expect(mocks.crawl.updateMany).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ startedAt: expect.any(Date), status: 'QUEUED' }) }));
  });
 });
 describe('language routing',()=>{

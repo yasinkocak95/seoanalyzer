@@ -9,16 +9,32 @@ import { robotsAllows } from './crawl.js';
 export async function verifyUrl(code: string, url: string) {
   if (!VERIFIABLE_CODES.has(code)) return 'COULD_NOT_VERIFY';
   try {
-    const robotsUrl = new URL('/robots.txt', url).toString();
-    const robots = await safeFetch(robotsUrl);
-    if (robots.response.ok) { if (!robotsAllows(await limitedText(robots.response), new URL(url).pathname + new URL(url).search)) return 'COULD_NOT_VERIFY'; }
-    else { await robots.response.body?.cancel(); if (robots.response.status !== 404) return 'COULD_NOT_VERIFY'; }
-    const { response, finalUrl } = await safeFetch(url);
+    let current = url;
+    const seen = new Set<string>();
+    let fetched: Awaited<ReturnType<typeof safeFetch>> | undefined;
+    for (let hop = 0; hop <= 5; hop++) {
+      if (new URL(current).hostname !== new URL(url).hostname || seen.has(current)) return 'COULD_NOT_VERIFY';
+      seen.add(current);
+      const robotsUrl = new URL('/robots.txt', current).toString();
+      const robots = await safeFetch(robotsUrl);
+      if (robots.response.ok) { if (!robotsAllows(await limitedText(robots.response), new URL(current).pathname + new URL(current).search)) return 'COULD_NOT_VERIFY'; }
+      else { await robots.response.body?.cancel(); if (robots.response.status !== 404) return 'COULD_NOT_VERIFY'; }
+      // Inspect each hop before fetching it, so redirects cannot bypass robots or scope.
+      fetched = await safeFetch(current, { redirect: 'manual' });
+      if (![301, 302, 303, 307, 308].includes(fetched.response.status)) break;
+      const location = fetched.response.headers.get('location');
+      await fetched.response.body?.cancel();
+      if (!location || hop === 5) return 'COULD_NOT_VERIFY';
+      current = new URL(location, current).toString();
+      fetched = undefined;
+    }
+    if (!fetched || new URL(fetched.finalUrl).hostname !== new URL(url).hostname) { await fetched?.response.body?.cancel(); return 'COULD_NOT_VERIFY'; }
+    const { response, finalUrl } = fetched;
     if (response.status === 429 || response.status >= 500) { await response.body?.cancel(); return 'COULD_NOT_VERIFY'; }
     if (code === 'HTTP_ERROR') { await response.body?.cancel(); return response.status >= 400 ? 'STILL_PRESENT' : response.ok ? 'FIXED' : 'COULD_NOT_VERIFY'; }
     if (!response.ok || !response.headers.get('content-type')?.includes('text/html') || new URL(finalUrl).hostname !== new URL(url).hostname) { await response.body?.cancel(); return 'COULD_NOT_VERIFY'; }
     const $ = load(await limitedText(response));
-    const findings = runRules({ pages: [{ url, statusCode: response.status, responseKind: 'HTML', title: $('title').first().text(), description: $('meta[name="description"]').attr('content'), h1: $('h1').map((_, e) => $(e).text()).get(), canonical: $('link[rel="canonical"]').first().attr('href'), canonicalCount: $('link[rel="canonical"]').length, robots: $('meta[name="robots"]').map((_, e) => $(e).attr('content') ?? '').get().join(','), xRobots: response.headers.get('x-robots-tag') }], sitemapUrls: [], robotsAccessible: true, robotsUrl, crawlLimited: true, sitemapFound: true });
+    const findings = runRules({ pages: [{ url: finalUrl, statusCode: response.status, responseKind: 'HTML', title: $('title').first().text(), description: $('meta[name="description" i]').attr('content'), h1: $('h1').map((_, e) => $(e).text()).get(), canonical: $('link[rel="canonical" i]').first().attr('href'), canonicalCount: $('link[rel="canonical" i]').length, robots: $('meta[name="robots" i]').map((_, e) => $(e).attr('content') ?? '').get().join(','), xRobots: response.headers.get('x-robots-tag') }], sitemapUrls: [], robotsAccessible: true, robotsUrl: new URL('/robots.txt', finalUrl).toString(), crawlLimited: true, sitemapFound: true });
     return findings.some(f => f.code === code) ? 'STILL_PRESENT' : 'FIXED';
   } catch { return 'COULD_NOT_VERIFY'; }
 }

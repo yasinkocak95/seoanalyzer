@@ -10,6 +10,7 @@ async function request(url: string, init: RequestInit): Promise<Response> {
     const headers = Object.fromEntries(new Headers({ 'user-agent': 'SEO-Denetim/1.0', accept: 'text/html,application/xml,text/plain,*/*;q=.1' }));
     new Headers(init.headers).forEach((value, key) => { headers[key] = value; });
     const req = (url.startsWith('https:') ? https : http).request(url, { method: init.method ?? 'GET', headers, lookup: safeLookup }, res => {
+      try {
       const responseHeaders = new Headers();
       for (const [key, value] of Object.entries(res.headers)) if (value !== undefined) responseHeaders.set(key, Array.isArray(value) ? value.join(', ') : value);
       const status = res.statusCode ?? 500;
@@ -21,6 +22,10 @@ async function request(url: string, init: RequestInit): Promise<Response> {
       if(decoder)res.on('error',error=>decoder.destroy(error));
       resolve(new Response(noBody ? null : Readable.toWeb(stream) as ReadableStream<Uint8Array>, { status, headers: responseHeaders }));
       res.once('close', cleanup);
+      } catch (error) {
+        // Response/Headers validation runs in an event callback, outside the Promise executor.
+        res.destroy(); cleanup(); reject(error);
+      }
     });
     const timer = setTimeout(() => req.destroy(new Error(turkish("m215"))), Number(process.env.REQUEST_TIMEOUT_MS ?? 15000));
     const abort = () => req.destroy(new Error(turkish("m216")));
@@ -38,6 +43,7 @@ export async function safeFetch(input: string, init: RequestInit = {}, redirects
     await assertSafeUrl(current);
     const response = await request(current, init);
     if ([301, 302, 303, 307, 308].includes(response.status)) {
+      if (init.redirect === 'manual') return { response, finalUrl: current, chain };
       const loc = response.headers.get('location');
       if (!loc) return { response, finalUrl: current, chain };
       await response.body?.cancel();

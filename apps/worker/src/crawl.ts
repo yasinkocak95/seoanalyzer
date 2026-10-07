@@ -106,14 +106,18 @@ const absolute = (v: string | undefined, b: string) => {
 export function robotsAllows(text:string,path:string) {
   const groups:{agents:string[];rules:{allow:boolean;path:string}[]}[]=[];
   let group={agents:[] as string[],rules:[] as {allow:boolean;path:string}[]};
+  let hasDirectives = false;
   for (const raw of text.split(/\r?\n/)) {
     const line=raw.split('#')[0].trim(), colon=line.indexOf(':');
     if (colon<0) continue;
     const key=line.slice(0,colon).trim().toLowerCase(),value=line.slice(colon+1).trim();
     if (key==='user-agent') {
-      if(group.rules.length){groups.push(group);group={agents:[],rules:[]};}
+      if(hasDirectives){groups.push(group);group={agents:[],rules:[]};hasDirectives=false;}
       group.agents.push(value.toLowerCase());
-    } else if (group.agents.length && ['allow','disallow'].includes(key) && value) group.rules.push({allow:key==='allow',path:value});
+    } else if (group.agents.length && ['allow','disallow'].includes(key)) {
+      hasDirectives = true;
+      if (value) group.rules.push({allow:key==='allow',path:value});
+    }
   }
   groups.push(group);
   const specific=groups.filter(g=>g.agents.includes('seo-denetim'));
@@ -121,11 +125,24 @@ export function robotsAllows(text:string,path:string) {
   let best:{allow:boolean;length:number}|undefined;
   for(const rule of applicable.flatMap(g=>g.rules)) {
     const end=rule.path.endsWith('$'),value=end?rule.path.slice(0,-1):rule.path;
-    const pattern='^'+value.split('*').map(v=>v.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')).join('.*')+(end?'$':'');
     const length=value.replace(/\*/g,'').length;
-    if(new RegExp(pattern).test(path) && (!best || length>best.length || length===best.length && rule.allow)) best={allow:rule.allow,length};
+    if(robotsPatternMatches(value, path, end) && (!best || length>best.length || length===best.length && rule.allow)) best={allow:rule.allow,length};
   }
   return !best || best.allow;
+}
+function robotsPatternMatches(pattern: string, path: string, anchoredEnd: boolean) {
+  // Literal segment searches avoid exponential regex backtracking on untrusted robots files.
+  const parts = pattern.split('*');
+  if (!path.startsWith(parts[0])) return false;
+  let offset = parts[0].length;
+  for (let i = 1; i < parts.length; i++) {
+    const part = parts[i];
+    if (anchoredEnd && i === parts.length - 1) return path.endsWith(part) && path.length - part.length >= offset;
+    const found = path.indexOf(part, offset);
+    if (found < 0) return false;
+    offset = found + part.length;
+  }
+  return !anchoredEnd || offset === path.length;
 }
 async function sitemaps(root: URL, robots: string) {
   const declared = robots

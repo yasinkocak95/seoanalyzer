@@ -7,8 +7,7 @@
 .container { width: min(1240px, calc(100% - 64px)); margin-inline: auto; }
 .header { border-bottom: 1px solid #e2e8f0; background: #fff; }
 .navbar { min-height: 80px; display: flex; align-items: center; justify-content: space-between; gap: 22px; }
-.logo { display: flex; align-items: center; gap: 10px; color: #0f172a; font-size: 18px; font-weight: 800; white-space: nowrap; letter-spacing: -.5px; }
-.logo > span { display: grid; place-items: center; width: 37px; height: 37px; border-radius: 11px; color: #fff; background: #0f172a; }
+.logo { display: flex; align-items: center; flex-shrink: 0; width: auto; line-height: 0; }
 .navLinks, .navActions { display: flex; align-items: center; gap: 22px; font-size: 12px; font-weight: 600; }
 .navLinks a:hover, .crawls:hover, .newAnalysis:hover { color: #2563eb; }
 .navActions { gap: 16px; }
@@ -167,8 +166,6 @@
 @media (max-width: 767px) {
   .container { width: calc(100% - 36px); }
   .navbar { min-height: 68px; gap: 12px; }
-  .logo { font-size: 15px; gap: 7px; }
-  .logo > span { width: 32px; height: 32px; border-radius: 9px; }
   .navActions { gap: 12px; }
   .navCta { display: none; }
   .crawls { font-size: 11px; }
@@ -229,7 +226,6 @@
   .container { width: calc(100% - 28px); }
   .navbar { gap: 8px; }
   .navActions { gap: 8px; }
-  .logo { font-size: 14px; }
   .features { grid-template-columns: 1fr; }
   .analysisList { grid-template-columns: 1fr; }
   .dashboardContent { grid-template-columns: 1fr; }
@@ -267,8 +263,6 @@
 @media(max-width:767px) { .closingCta { flex-direction: column; align-items: flex-start; padding: 26px; gap: 22px; } }
 .header { position: sticky; top: 0; z-index: 30; border-bottom-color: #dfe7f2; }
 .navbar { min-height: 78px; }
-.logo { font-size: 19px; letter-spacing: -.7px; }
-.logo > span { width: 39px; height: 39px; border-radius: 12px; background: linear-gradient(145deg,#3b82f6,#1d4ed8); box-shadow: 0 4px 10px #2563eb24,inset 0 1px 0 #ffffff30; }
 .navLinks { gap: 24px; font-size: 12px; color: #536580; }
 .navLinks a { padding-block: 10px; }
 .primary,.secondary { border-radius: 11px; min-height: 50px; font-size: 14px; padding: 13px 22px; font-weight: 650; }
@@ -346,5 +340,12 @@
 .scope { margin-bottom: 56px; border-radius: 14px; }
 @media(max-width:1199px) { .navbar { gap: 16px; } .navLinks { gap: 14px; } .navActions { gap: 12px; } .heroGrid { gap: 36px 30px; } .formCard { gap: 24px; padding: 26px; } .feature { padding: 22px; } }
 @media(max-width:1023px) { .heroGrid { padding-top: 60px; } .heroCopy { max-width: 720px; } .heroCopy h1 { max-width: 700px; font-size: clamp(44px,6.2vw,62px); } .formCard { grid-template-columns: 1fr; } .aiFeature { gap: 30px; padding: 32px; } .steps article { padding: 22px; } }
-@media(max-width:767px) { .navbar { min-height: 68px; } .logo { font-size: 16px; } .logo > span { width: 34px; height: 34px; border-radius: 10px; } .navActions { gap: 10px; } .heroGrid { padding-block: 42px 30px; gap: 30px; } .heroCopy h1 { font-size: clamp(36px,8.8vw,52px); letter-spacing: -1.7px; } .description { font-size: 15px; } .heroActions { gap: 10px; margin-top: 26px; } .heroActions a { font-size: 13px; padding-inline: 17px; } .chips > span { font-size: 9px; padding: 5px 8px; } .checks li { font-size: 10px; } .formCard { padding: 22px; gap: 22px; } .formHeading h2 { font-size: 21px; } .formHeading div > p:last-child { font-size: 12px; } .form :global(.input),.form :global(.btn) { font-size: 13px; } .dashboardBody { padding: 16px; } .dashboardHeading h2 { font-size: 19px; } .features { padding-block: 32px 40px; } .feature { padding: 24px; } .aiFeature { grid-template-columns: 1fr; padding: 26px; gap: 24px; } .aiFeature h2 { font-size: 28px; } .analysisSection { padding-block: 24px 48px; } .analysisList { gap: 24px 18px; } .reportHeader { padding: 22px; } .reportTable td { padding-block: 16px; } .reportTable td strong { font-size: 11px; } .reportTable td > span:not(.severity) { font-size: 10px; } .stepsSection { padding-block: 48px; } .steps { gap: 14px; } .steps article { padding: 22px; grid-template-columns: 42px 1fr; } .steps h3 { font-size: 16px; } .steps p { font-size: 13px; } .faqSection { padding-block: 52px 36px; } .scope { margin-bottom: 32px; } }
-@media(max-width:380px) { .analysisList { grid-template-columns: 1fr; } .logo { font-size: 14px; } .navActions { gap: 7px; } .formCard { padding: 18px; } }
+@media(max-width:767px) { .navbar { min-height: 68px; } .navActions { gap: 10px; } .heroGrid { padding-block: 42px 30px; gap: 30px; } .heroCopy h1 { font-size: clamp(36px,8.8vw,52px); letter-spacing: -1.7px; } .description { font-size: 15px; } .heroActions { gap: 10px; margin-top: 26px; } .heroActions a { font-size: 13px; padding-inline: 17px; } .chips > span { font-size: 9px; padding: 5px 8px; } .checks li { font-size: 10px; } .formCard { padding: 22px; gap: 22px; } .formHeading h2 { font-size: 21px; } .formHeading div > p:last-child { font-size: 12px; } .form :global(.input),.form :global(.btn) { font-size: 13px; } .dashboardBody { padding: 16px; } .dashboardHeading h2 { font-size: 19px; } .features { padding-block: 32px 40px; } .feature { padding: 24px; } .aiFeature { grid-template-columns: 1fr; padding: 26px; gap: 24px; } .aiFeature h2 { font-size: 28px; } .analysisSection { padding-block: 24px 48px; } .analysisList { gap: 24px 18px; } .reportHeader { padding: 22px; } .reportTable td { padding-block: 16px; } .reportTable td strong { font-size: 11px; } .reportTable td > span:not(.severity) { font-size: 10px; } .stepsSection { padding-block: 48px; } .steps { gap: 14px; } .steps article { padding: 22px; grid-template-columns: 42px 1fr; } .steps h3 { font-size: 16px; } .steps p { font-size: 13px; } .faqSection { padding-block: 52px 36px; } .scope { margin-bottom: 32px; } }
+@media(max-width:380px) { .analysisList { grid-template-columns: 1fr; } .navActions { gap: 7px; } .formCard { padding: 18px; } }
+
+/* Only the homepage header uses these sizes; shared branding is unchanged. */
+.logo :global(.brand-logo-frame) { height: 42px; width: auto; aspect-ratio: 1185 / 237; }
+.logo :global(.brand-logo) { width: auto; height: 159.493671%; object-fit: contain; }
+@media(max-width:767px) {
+  .logo :global(.brand-logo-frame) { height: clamp(28px, calc((100vw - 180px) / 5), 38px); }
+}

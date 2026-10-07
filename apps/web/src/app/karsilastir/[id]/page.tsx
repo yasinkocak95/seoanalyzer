@@ -1,15 +1,17 @@
+import { pageTitle } from '@/lib/page-title';
 import { requireCrawl } from '@/lib/access';
 import { db } from '@seo/db';
 import { compareCrawls } from '@seo/shared';
 import { translator } from '@seo/shared/i18n';
 import { getLocale } from '@/lib/locale';
-import { notFound } from 'next/navigation';
-export const metadata = { robots: { index: false, follow: false } };
+import { notFound, redirect } from 'next/navigation';
+export async function generateMetadata() { return { title: await pageTitle('compare'),  robots: { index: false, follow: false } }; }
 export default async function Compare({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ onceki?: string }> }) {
   const t = translator(await getLocale()), { id } = await params, { onceki } = await searchParams;
   const owner = await requireCrawl(id);
   const current = await db.crawl.findUnique({ where: { id }, include: { findings: true } });
   if (!current) notFound();
+  if (!['COMPLETED', 'PARTIAL'].includes(current.status)) redirect(`/tarama/${id}`);
   const history = await db.crawl.findMany({ where: { ownerHash: owner, normalizedHost: current.normalizedHost, status: 'COMPLETED', createdAt: { lt: current.createdAt } }, orderBy: { createdAt: 'desc' }, take: 100, select: { id: true, createdAt: true } });
   const previous = await db.crawl.findFirst({ where: { ...(onceki ? { id: onceki } : {}), ownerHash: owner, normalizedHost: current.normalizedHost, status: 'COMPLETED', createdAt: { lt: current.createdAt } }, orderBy: { createdAt: 'desc' }, include: { findings: true } });
   if (onceki && !previous) notFound();

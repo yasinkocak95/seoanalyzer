@@ -21,6 +21,8 @@
     "typescript": "^5.7.3"
   },
   "overrides": {
+    "http-cache-semantics": "4.3.0",
+    "@prisma/config": { "deepmerge-ts": "8.0.2" },
     "sharp": "0.35.5",
     "source-map-js": "1.2.2"
   }

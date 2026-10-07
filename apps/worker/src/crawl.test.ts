@@ -34,6 +34,17 @@ describe('robots regression',()=>{
   expect(robotsAllows(robots,'/a')).toBe(true);
   expect(robotsAllows(robots,'/private/public')).toBe(true);
  });
+ it('does not backtrack exponentially on attacker-controlled wildcard rules', () => {
+  const robots = `User-agent: *\nDisallow: /${'a*'.repeat(40)}b$`;
+  expect(robotsAllows(robots, '/' + 'a'.repeat(100) + 'c')).toBe(true);
+ });
+ it('matches the last literal suffix of an end-anchored wildcard', () => {
+  expect(robotsAllows('User-agent: *\nDisallow: /a*b$', '/abab')).toBe(false);
+  expect(robotsAllows('User-agent: *\nDisallow: /a*b$', '/ababc')).toBe(true);
+ });
+ it('keeps a specific unrestricted group separate after an empty Disallow', () => {
+  expect(robotsAllows('User-agent: SEO-Denetim\nDisallow:\nUser-agent: *\nDisallow: /', '/public')).toBe(true);
+ });
 });
 
 it('does not exclude normal numeric product identifiers',()=>expect(crawlTrapReason('https://example.test/product?id=123456789',1)).toBeNull());

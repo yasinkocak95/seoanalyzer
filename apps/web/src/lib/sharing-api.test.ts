@@ -14,3 +14,7 @@ it('revokes all links for the authorized report', async () => { expect((await DE
 it('does not resolve expired, revoked or unknown capabilities', async () => { const r = await resolve(req({ token: 'a'.repeat(64), locale: 'en' })); expect(r.status).toBe(404); expect(mocks.share).toHaveBeenCalledWith(expect.objectContaining({ where: { tokenHash: digest('a'.repeat(64)), revokedAt: null, expiresAt: { gt: expect.any(Date) } } })); });
 it('returns read-only data without internal IDs, evidence or mutation links', async () => { mocks.share.mockResolvedValue({ crawlId: 'c' }); const r = await resolve(req({ token: 'a'.repeat(64), locale: 'en' })); expect(r.status).toBe(200); expect(await r.json()).toEqual({ host: 'example.com', score: 80, completedAt: null, counts: { critical: 0, warning: 0, info: 0 }, findings: [] }); expect(r.headers.get('cache-control')).toBe('no-store'); });
 it('fails closed under admission limits and rejects cross-site requests', async () => { mocks.limited.mockResolvedValue(false); expect((await resolve(req({ token: 'a'.repeat(64) }))).status).toBe(429); expect((await POST(req({}, 'https://evil.com'), context)).status).toBe(403); });
+it('does not expose incomplete findings while a previously shared partial report resumes', async () => {
+  mocks.share.mockResolvedValue({ crawlId: 'c' }); mocks.crawl.mockResolvedValue({ status: 'RUNNING', findings: [] });
+  expect((await resolve(req({ token: 'a'.repeat(64) }))).status).toBe(409);
+});

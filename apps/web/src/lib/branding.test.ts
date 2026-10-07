@@ -11,7 +11,7 @@ describe('shared product branding', () => {
   it.each(['tr', 'en'] as const)('uses the same accessible logo and preserves home routing in %s', async locale => {
     state.locale = locale;
     const html = renderToStaticMarkup(await Layout({ children: React.createElement('main') }));
-    expect(html.match(/alt="SEOAnalyzer"/g)).toHaveLength(2);
+    expect(html.match(/alt="SEO Analyzer"/g)).toHaveLength(2);
     expect(html.match(/class="brand-logo-frame"/g)).toHaveLength(2);
     expect(html).not.toContain('brand-mark');
     const links = html.match(/<a\b[^>]*class="site-brand"[^>]*>/g) ?? [];

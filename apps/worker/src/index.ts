@@ -37,8 +37,8 @@ worker.on('error', error => console.error('İşçi bağlantı hatası', error));
 connection.on('error', error => console.error('Redis bağlantı hatası', error));
 worker.on('failed', (job, error) => {
   console.error('Tarama hatası', job?.id, error);
-  if(job && (job.attemptsMade >= (job.opts.attempts??1) || /stalled more than/i.test(error.message)))
-    void db.crawl.updateMany({where:{id:job.data.crawlId,status:{in:['QUEUED','RUNNING']}},data:{status:'FAILED',error:error.message,statusMessage:turkish('m017')}}).catch(error=>console.error('Final crawl status could not be saved',error));
+  if(job?.finishedOn && (job.attemptsMade >= (job.opts.attempts??1) || /stalled more than/i.test(error.message)))
+    void db.crawl.updateMany({where:failedAttemptWhere(job.data.crawlId,job.finishedOn),data:{status:'FAILED',error:error.message,statusMessage:turkish('m017')}}).catch(error=>console.error('Final crawl status could not be saved',error));
 });
 worker.on('completed', job => {
   console.log(`Tarama işi tamamlandı: ${job.data.crawlId}`);
@@ -51,12 +51,16 @@ console.log('SEO tarama işçisi hazır.');
 const recoveryQueue=new Queue<CrawlJob>(CRAWL_QUEUE,{connection});
 recoveryQueue.on('error',error=>console.error('Recovery queue error',error));
 let recoveryOffset=0,recovering=false;
+function failedAttemptWhere(id: string, finishedOn: number) {
+  // A failed job from a paused attempt must not terminate a later resumed attempt.
+  return { id, status: { in: ['QUEUED', 'RUNNING'] as ('QUEUED' | 'RUNNING')[] }, OR: [{ startedAt: null }, { startedAt: { lte: new Date(finishedOn) } }] };
+}
 export async function reconcileFailedJobs() {
   if(recovering)return;
   recovering=true;
   try {
     const jobs=await recoveryQueue.getJobs(['failed'],recoveryOffset,recoveryOffset+99);
-    for(const job of jobs)if(job?.data.crawlId)await db.crawl.updateMany({where:{id:job.data.crawlId,status:{in:['QUEUED','RUNNING']}},data:{status:'FAILED',error:job.failedReason,statusMessage:turkish('m017')}});
+    for(const job of jobs)if(job?.data.crawlId && job.finishedOn)await db.crawl.updateMany({where:failedAttemptWhere(job.data.crawlId,job.finishedOn),data:{status:'FAILED',error:job.failedReason,statusMessage:turkish('m017')}});
     recoveryOffset=jobs.length===100?recoveryOffset+100:0;
   }catch(error){console.error('Failed crawl reconciliation deferred',error)}
   finally{recovering=false}

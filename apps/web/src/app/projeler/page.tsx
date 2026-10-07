@@ -1,3 +1,4 @@
+import { pageTitle } from '@/lib/page-title';
 import Link from 'next/link';
 import { db } from '@seo/db';
 import { ownerHash } from '@/lib/access';
@@ -5,7 +6,7 @@ import { getLocale } from '@/lib/locale';
 import { pageIndex } from '@/lib/projects';
 import { translator, numberLocale } from '@seo/shared/i18n';
 export const dynamic = 'force-dynamic';
-export const metadata = { robots: { index: false, follow: false } };
+export async function generateMetadata() { return { title: await pageTitle('projects'),  robots: { index: false, follow: false } }; }
 export default async function Projects({ searchParams }: { searchParams: Promise<{ page?: string }> }) {
   const locale = await getLocale(), t = translator(locale), owner = await ownerHash() ?? 'unauthenticated', page = pageIndex((await searchParams).page);
   const domains = await db.crawl.groupBy({ by: ['normalizedHost'], where: { ownerHash: owner }, _max: { createdAt: true }, _count: { id: true }, orderBy: { _max: { createdAt: 'desc' } }, take: 30, skip: page * 30 });

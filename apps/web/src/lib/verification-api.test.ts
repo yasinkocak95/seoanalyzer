@@ -14,3 +14,8 @@ it('requires a URL for oversized groups', async () => { mocks.findings.mockResol
 it('does not enqueue duplicates after a concurrent claim', async () => { mocks.update.mockResolvedValue({ count: 0 }); expect((await POST(req({ code: 'TITLE_MISSING' }), context)).status).toBe(202); expect(mocks.add).not.toHaveBeenCalled(); });
 it('records unsupported verification as uncertain with a date', async () => { const r = await POST(req({ code: 'DUPLICATE_TITLE' }), context); expect((await r.json()).status).toBe('COULD_NOT_VERIFY'); expect(mocks.update).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ checkedAt: expect.any(Date) }) })); expect(mocks.add).not.toHaveBeenCalled(); });
 it('repairs an enqueue failure into a completed uncertain state', async () => { mocks.add.mockRejectedValue(new Error('Redis')); expect((await POST(req({ code: 'TITLE_MISSING' }), context)).status).toBe(503); expect(mocks.update).toHaveBeenLastCalledWith(expect.objectContaining({ data: { status: 'COULD_NOT_VERIFY', checkedAt: expect.any(Date) } })); });
+it('clears the previous verification timestamp when a new check is queued', async () => {
+  mocks.record.mockResolvedValue({ id: 'v', generation: 'old', status: 'FIXED', checkedAt: new Date(0) });
+  await POST(req({ code: 'TITLE_MISSING' }), context);
+  expect(mocks.update).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ status: 'QUEUED', checkedAt: null }) }));
+});

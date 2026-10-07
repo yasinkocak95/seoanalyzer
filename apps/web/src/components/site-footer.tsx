@@ -33,7 +33,7 @@ export function SiteFooter({ locale }: { locale: Locale }) {
           <p>{t('footer.positioning')}</p>
         </div>
       </div>
-      <div className="footer-bottom"><p>© {new Date().getFullYear()} SEOAnalyzer. {t('footer.copyright')}</p><span>{t('footer.positioning')}</span></div>
+      <div className="footer-bottom"><p>© {new Date().getFullYear()} SEO Analyzer. {t('footer.copyright')}</p><span>{t('footer.positioning')}</span></div>
     </div>
   </footer>;
 }

@@ -328,6 +328,7 @@ export async function createDocxReport(data: ReportData) {
         : translate("m080"),
     ),
   );
+  if (data.comparison.unverified) children.push(p(`${translate('comparison.unverified')}: ${data.comparison.unverified}. ${translate('comparison.scope')}`));
   const doc = new Document({
     styles: {
       default: {

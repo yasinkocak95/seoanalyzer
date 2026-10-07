@@ -1,4 +1,4 @@
-# SEO Denetim
+# SEO Analyzer
 
 [English](README.md) | **Türkçe**
 

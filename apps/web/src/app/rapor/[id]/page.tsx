@@ -1,6 +1,7 @@
+import { pageTitle } from '@/lib/page-title';
 import { requireCrawl } from '@/lib/access';
 import { ShareControls } from '@/components/share-controls';
-export const metadata={robots:{index:false,follow:false}};
+export async function generateMetadata() { return { title: await pageTitle('report'), robots:{index:false,follow:false}}; }
 import { getLocale } from '@/lib/locale';
 import { translator, numberLocale, localizeFinding, turkish, type Locale } from '@seo/shared/i18n';
 import Link from "next/link";
@@ -78,6 +79,7 @@ export default async function Report({
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
+          {token ? <>
           <a
             className="btn"
             href={`/api/crawls/${id}/export/pdf?token=${token}&lang=${locale}`}
@@ -96,6 +98,7 @@ export default async function Report({
           >
             <Download size={17} />
              {translate("m121")} </a>
+          </> : <p className="text-sm text-muted" role="status">{translate('export.unavailable')}</p>}
           <RescanButton url={crawl.rootUrl} full={crawl.fullCrawl} />
           {previous && (
             <Link

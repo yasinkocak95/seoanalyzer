@@ -35,7 +35,11 @@ export function scheduleRunner(queue: Queue<CrawlJob>) {
         const crawl = await db.$transaction(async tx => {
           await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${schedule.ownerHash + ':' + schedule.normalizedHost}, 0))`;
           const active = await tx.crawl.findFirst({ where: { ownerHash: schedule.ownerHash, normalizedHost: schedule.normalizedHost, status: { in: ['QUEUED', 'RUNNING', 'PAUSED', 'PARTIAL'] } }, select: { id: true } });
-          if (active) return null;
+          if (active) {
+            // Rotate blocked plans out of the due batch so later projects are not starved.
+            await tx.crawlSchedule.updateMany({ where: { id: schedule.id, enabled: true, nextRunAt: schedule.nextRunAt }, data: { nextRunAt: new Date(now.getTime() + 300000) } });
+            return null;
+          }
           const claim = await tx.crawlSchedule.updateMany({ where: { id: schedule.id, enabled: true, nextRunAt: schedule.nextRunAt }, data: { nextRunAt: nextScheduledRun(now, schedule.frequency as ScheduleFrequency), lastRunAt: now } });
           if (!claim.count) return null;
           return tx.crawl.create({ data: { ownerHash: schedule.ownerHash, normalizedHost: schedule.normalizedHost, rootUrl: schedule.rootUrl, fullCrawl: schedule.fullCrawl, scheduleId: schedule.id } });

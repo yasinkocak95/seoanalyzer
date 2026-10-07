@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import { StartForm } from '@/components/start-form';
 import { LanguageSwitcher } from '@/components/language';
+import { BrandLogo } from '@/components/brand-logo';
 import type { Locale } from '@seo/shared/i18n';
 import { translator } from '@seo/shared/i18n';
 import trCopy from './copy.json';
@@ -24,7 +25,7 @@ export function Homepage({ locale }: { locale: Locale }) {
     <div className={styles.landing}>
       <header className={styles.header}>
         <div className={`${styles.container} ${styles.navbar}`}>
-          <Link href={homeHref} className={styles.logo}><span><SearchCheck size={22} /></span>{copy.brand}</Link>
+          <Link href={homeHref} className={styles.logo}><BrandLogo priority /></Link>
           <nav className={styles.navLinks} aria-label={copy.brand}>
             {copy.nav.map((label, index) => <a key={label} href={`#${anchors[index]}`}>{label}</a>)}
           </nav>

@@ -15,8 +15,10 @@ export async function POST(request: Request) {
     const share = await db.reportShare.findFirst({ where: { tokenHash: digest(body.token), revokedAt: null, expiresAt: { gt: new Date() } }, select: { crawlId: true } });
     if (!share) return NextResponse.json({ error: 'Unavailable' }, { status: 404, headers });
     if (await db.finding.count({ where: { crawlId: share.crawlId } }) > 2000) return NextResponse.json({ error: 'Report too large' }, { status: 413, headers });
-    const crawl = await db.crawl.findUnique({ where: { id: share.crawlId }, select: { normalizedHost: true, score: true, completedAt: true, findings: { select: { code: true, severity: true, title: true, description: true, recommendation: true, affectedUrls: true } } } });
+    const crawl = await db.crawl.findUnique({ where: { id: share.crawlId }, select: { status: true, normalizedHost: true, score: true, completedAt: true, findings: { take: 2001, select: { code: true, severity: true, title: true, description: true, recommendation: true, affectedUrls: true } } } });
     if (!crawl) return NextResponse.json({ error: 'Unavailable' }, { status: 404, headers });
+    if (!['COMPLETED', 'PARTIAL'].includes(crawl.status)) return NextResponse.json({ error: 'Unavailable' }, { status: 409, headers });
+    if (crawl.findings.length > 2000) return NextResponse.json({ error: 'Report too large' }, { status: 413, headers });
     if (crawl.findings.reduce((sum, f) => sum + (Array.isArray(f.affectedUrls) ? f.affectedUrls.length : 0), 0) > 20000) return NextResponse.json({ error: 'Report too large' }, { status: 413, headers });
     return NextResponse.json(publicReport({ ...crawl, findings: crawl.findings.map(f => ({ ...f, evidence: [] })) }, localeOf(body.locale)), { headers });
   } catch { return NextResponse.json({ error: 'Unavailable' }, { status: 503, headers }); }

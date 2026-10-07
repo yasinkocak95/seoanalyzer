@@ -20,6 +20,10 @@ describe('server and client rendering',()=>{
     const home=await Home(),html=renderToStaticMarkup(await Layout({children:home}));
     expect(home.type).toBe(Homepage);
     expect(home.props.locale).toBe(locale);
+    const landingHeader=renderToStaticMarkup(home).match(/<header\b[\s\S]*?<\/header>/)?.[0]??'';
+    expect(landingHeader).toContain('seo-analyzer-logo.png');
+    expect(landingHeader).toContain('alt="SEO Analyzer"');
+    expect(landingHeader).not.toContain('lucide-search-check');
     expect(html).toContain(`lang="${locale}"`);
     expect(html).toContain(locale==='en'?'Start analysis':'Analizi Başlat');
     expect(html).toContain(locale==='en'?'Website URL':'Site adresi');
@@ -69,5 +73,10 @@ describe('server and client rendering',()=>{
     const t=translator('en'),f={code:'TITLE_MISSING',severity:'WARNING' as const,title:t(tr.m241),description:t(tr.m242),recommendation:t(tr.m243),affectedUrls:['https://example.test'],evidence:[{url:'https://example.test',deger:null}]};
     const html=renderToStaticMarkup(React.createElement(LanguageProvider,{locale:'en',children:React.createElement(ReportFindings,{findings:groupFindings([f])})}));
     expect(html).toContain('Missing or empty meta title');expect(html).toContain('How to fix');expect(html).toContain('Warning');
+  });
+  it.each(['tr','en'] as Locale[])('announces an empty issue list in %s', locale => {
+    const html = renderToStaticMarkup(React.createElement(LanguageProvider, { locale, children: React.createElement(ReportFindings, { findings: [] }) }));
+    expect(html).toContain('role="status"');
+    expect(html).toContain(translator(locale)('m352'));
   });
 });

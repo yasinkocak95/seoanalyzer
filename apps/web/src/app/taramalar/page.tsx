@@ -1,5 +1,6 @@
+import { pageTitle } from '@/lib/page-title';
 import { ownerHash } from '@/lib/access';
-export const metadata={robots:{index:false,follow:false}};
+export async function generateMetadata() { return { title: await pageTitle('crawls'), robots:{index:false,follow:false}}; }
 import { getLocale } from '@/lib/locale';
 import { translator, numberLocale, localizeFinding, turkish, type Locale } from '@seo/shared/i18n';
 import Link from'next/link';import{db}from'@seo/db';import{ArrowRight}from'lucide-react';export const dynamic='force-dynamic';const labels:Record<string,[string,string]>={QUEUED:[turkish("m099"),'info'],RUNNING:[turkish("m100"),'warning'],PAUSED:[turkish("m101"),'warning'],PARTIAL:[turkish("m102"),'warning'],COMPLETED:[turkish("m076"),'success'],FAILED:[turkish("m103"),'critical']};export default async function Crawls(){const locale=await getLocale(),t=translator(locale);const rows=await db.crawl.findMany({where:{ownerHash:await ownerHash() ?? "unauthenticated"},orderBy:{createdAt:'desc'},take:50});// Rapordaki gibi aynı kuralın parçalı kayıtları tek bulgu sayılır.

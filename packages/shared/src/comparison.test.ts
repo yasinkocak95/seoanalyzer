@@ -10,5 +10,11 @@ describe('crawl comparison', () => {
   });
   it('rejects another domain', () => expect(() => compareCrawls({ ...base, findings: [] }, { ...base, normalizedHost: 'other.com', findings: [] })).toThrow());
   it('does not claim resolution on a partial crawl', () => expect(compareCrawls({ ...base, findings: [issue('A', ['a'])] }, { ...base, status: 'PARTIAL', findings: [] }).rows[0].status).toBe('unverified'));
+  it.each([{ skippedUrls: 10 }, { errorUrls: 1 }, { discoveredPages: 11 }, { rootUrl: 'https://example.com/other/' }])('does not certify missing issues when coverage is incomplete: %j', coverage => {
+    expect(compareCrawls({ ...base, rootUrl: 'https://example.com/', findings: [issue('A', ['a'])] }, { ...base, rootUrl: 'https://example.com/', ...coverage, findings: [] }).rows[0].status).toBe('unverified');
+  });
+  it.each([null, [], [{ code: 'OTHER_RULE' }]])('does not certify a rule that was not checked: %j', checkedRules => {
+    expect(compareCrawls({ ...base, findings: [issue('A', ['a'])] }, { ...base, checkedRules, findings: [] }).rows[0].status).toBe('unverified');
+  });
   it('detects severity increases with unchanged URL counts', () => expect(compareCrawls({ ...base, findings: [issue('A', ['a'])] }, { ...base, findings: [issue('A', ['a'], 'CRITICAL')] }).rows[0].status).toBe('worsened'));
 });

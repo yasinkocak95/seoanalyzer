@@ -14,7 +14,4 @@ export async function requireCrawl(id: string) {
   if (!owner || !await db.crawl.findFirst({ where: { id, ownerHash: owner }, select: { id: true } })) notFound();
   return owner;
 }
-export function sameOrigin(request: Request) {
-  const origin = request.headers.get('origin');
-  return (!origin || origin === new URL(request.url).origin) && request.headers.get('sec-fetch-site') !== 'cross-site';
-}
+export { sameOrigin } from './request-origin';

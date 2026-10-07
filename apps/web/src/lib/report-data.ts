@@ -3,13 +3,23 @@ import { createHmac, timingSafeEqual } from "node:crypto";
 import { db } from "@seo/db";
 import { countBySeverity, groupFindings, passedRules } from "./findings";
 import { attachTemplates, getTemplates } from "./templates";
-const secret = () =>
-  process.env.EXPORT_SIGNING_SECRET ?? "yalnizca-yerel-gelistirme-anahtari";
-export const signExport = (crawlId: string) =>
-  createHmac("sha256", secret()).update(crawlId).digest("hex");
+import { compareCrawls } from '@seo/shared';
+export const signExport = (crawlId: string) => {
+  const secret = process.env.EXPORT_SIGNING_SECRET?.trim();
+  const legacyDefault = secret === 'yerel-gelistirme-icin-degistirin' || secret === 'yalnizca-yerel-gelistirme-anahtari';
+  return secret && secret.length >= 32 && !legacyDefault ? createHmac('sha256', secret).update(crawlId).digest('hex') : '';
+};
+export function exportFailure(error: unknown, locale: Locale) {
+  const t = translator(locale), message = error instanceof Error ? error.message : '';
+  if (message === t('m092')) return { error: message, status: 404 };
+  if (message === t('m160')) return { error: message, status: 409 };
+  if (message === t('m093') || message === t('m094')) return { error: message, status: 413 };
+  return { error: t('saas.error'), status: 503 };
+}
 export function verifyExport(crawlId: string, token: string | null) {
   if (!token || !/^[a-f0-9]{64}$/.test(token)) return false;
   const expected = signExport(crawlId);
+  if (!expected) return false;
   try {
     return timingSafeEqual(
       Buffer.from(token, "hex"),
@@ -28,9 +38,10 @@ export async function getReportData(crawlId: string,locale:Locale='tr') {
   if(await db.finding.count({where:{crawlId}})>2000)throw new Error(t('m093'));
   const crawl = await db.crawl.findUnique({
     where: { id: crawlId },
-    include: { findings: { orderBy: { severity: "asc" } } },
+    include: { findings: { orderBy: { severity: "asc" }, take: 2001 } },
   });
   if (!crawl) throw new Error(t("m092"));
+  if (!['COMPLETED', 'PARTIAL'].includes(crawl.status)) throw new Error(t('m160'));
   const affectedCount = crawl.findings.reduce(
     (sum, f) =>
       sum + (Array.isArray(f.affectedUrls) ? f.affectedUrls.length : 0),
@@ -58,12 +69,12 @@ export async function getReportData(crawlId: string,locale:Locale='tr') {
       createdAt: { lt: crawl.createdAt },
     },
     orderBy: { createdAt: "desc" },
-    include: { findings: true },
+    include: { findings: { take: 2001 } },
   });
+  if (previous && previous.findings.length > 2000) throw new Error(t('m093'));
   const templates = await getTemplates(crawlId);
   const groups = attachTemplates(groupFindings(crawl.findings.map(f=>localizeFinding(f,locale))), templates);
-  const old = new Set(previous?.findings.map((f) => f.fingerprint) ?? []),
-    now = new Set(crawl.findings.map((f) => f.fingerprint));
+  const comparison = previous ? compareCrawls(previous, crawl).rows : [];
   const excluded = await db.crawlUrl.findMany({
     where: {
       crawlId,
@@ -135,10 +146,10 @@ export async function getReportData(crawlId: string,locale:Locale='tr') {
       reason: safe(t(x.lastError ?? t("m095")), 500),
     })),
     comparison: {
-      new: crawl.findings.filter((f) => !old.has(f.fingerprint)).length,
-      ongoing: crawl.findings.filter((f) => old.has(f.fingerprint)).length,
-      resolved:
-        previous?.findings.filter((f) => !now.has(f.fingerprint)).length ?? 0,
+      new: previous ? comparison.filter(row => row.status === 'new').length : groups.length,
+      ongoing: comparison.filter(row => row.status === 'ongoing' || row.status === 'worsened').length,
+      resolved: comparison.filter(row => row.status === 'resolved').length,
+      unverified: comparison.filter(row => row.status === 'unverified').length,
       hasPrevious: !!previous,
     },
   };

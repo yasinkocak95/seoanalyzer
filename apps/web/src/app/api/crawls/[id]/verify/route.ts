@@ -32,7 +32,7 @@ export async function POST(request: Request, { params }: Context) {
     const record = await db.fixVerification.upsert({ where: { crawlId_code: { crawlId: id, code: body.code } }, create: { crawlId: id, code: body.code, targets: [], generation: '', status: 'COULD_NOT_VERIFY' }, update: {} });
     if (['QUEUED', 'RUNNING'].includes(record.status)) return NextResponse.json(record, { status: 202 });
     const status = VERIFIABLE_CODES.has(body.code) ? 'QUEUED' : 'COULD_NOT_VERIFY';
-    const claim = await db.fixVerification.updateMany({ where: { id: record.id, generation: record.generation, status: { notIn: ['QUEUED', 'RUNNING'] } }, data: { generation, targets, status, ...(status === 'COULD_NOT_VERIFY' ? { checkedAt: new Date() } : {}) } });
+    const claim = await db.fixVerification.updateMany({ where: { id: record.id, generation: record.generation, status: { notIn: ['QUEUED', 'RUNNING'] } }, data: { generation, targets, status, checkedAt: status === 'COULD_NOT_VERIFY' ? new Date() : null } });
     if (!claim.count) return NextResponse.json({ status: 'QUEUED' }, { status: 202 });
     if (status === 'QUEUED') {
       try { await getVerifyQueue().add('verify', { verificationId: record.id, generation }, { jobId: `verify-${record.id}-${generation}`, attempts: 2, backoff: { type: 'exponential', delay: 3000 }, removeOnComplete: 100, removeOnFail: 100 }); }

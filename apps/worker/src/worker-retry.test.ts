@@ -21,6 +21,13 @@ describe('worker recovery regressions',()=>{
  });
  it('recovers RUNNING state when BullMQ identifies a stalled job',async()=>{mocks.findUnique.mockResolvedValue({status:'RUNNING'});await mocks.processor(job(0,1));expect(mocks.execute).toHaveBeenCalledWith('crawl','https://example.test/',true)});
  it.each(['FAILED','COMPLETED','PAUSED'])('does not reprocess %s',async status=>{mocks.findUnique.mockResolvedValue({status});await mocks.processor(job());expect(mocks.execute).not.toHaveBeenCalled()});
- it('repairs terminal job state after a database outage',async()=>{mocks.getJobs.mockResolvedValue([{data:{crawlId:'orphan'},failedReason:'Database offline'}]);await reconcileFailedJobs();expect(mocks.updateMany).toHaveBeenCalledWith(expect.objectContaining({where:{id:'orphan',status:{in:['QUEUED','RUNNING']}},data:expect.objectContaining({status:'FAILED'})}))});
+ it('repairs terminal job state after a database outage',async()=>{mocks.getJobs.mockResolvedValue([{data:{crawlId:'orphan'},finishedOn:1000,failedReason:'Database offline'}]);await reconcileFailedJobs();expect(mocks.updateMany).toHaveBeenCalledWith(expect.objectContaining({where:expect.objectContaining({id:'orphan',status:{in:['QUEUED','RUNNING']},OR:[{startedAt:null},{startedAt:{lte:new Date(1000)}}]}),data:expect.objectContaining({status:'FAILED'})}))});
  it('handles worker and Redis error events',()=>expect(mocks.events.has('error')).toBe(true));
+ it('keeps old failed jobs from marking a newer resumed execution FAILED', async () => {
+  const resumedAt = new Date(2000);
+  mocks.getJobs.mockResolvedValue([{ data: { crawlId: 'resumed' }, finishedOn: 1000, failedReason: 'Old paused batch failed' }]);
+  mocks.updateMany.mockImplementation(async ({ where }) => ({ count: where.OR.some((condition: any) => condition.startedAt === null ? false : resumedAt <= condition.startedAt.lte) ? 1 : 0 }));
+  await reconcileFailedJobs();
+  expect(await mocks.updateMany.mock.results[0].value).toEqual({ count: 0 });
+ });
 });

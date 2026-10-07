@@ -251,6 +251,7 @@ export async function createPdfReport(data: ReportData) {
         ? translate("m079", [data.comparison.new, data.comparison.ongoing, data.comparison.resolved])
         : translate("m080"),
     );
+    if (data.comparison.unverified) body(`${translate('comparison.unverified')}: ${data.comparison.unverified}. ${translate('comparison.scope')}`);
     const range = doc.bufferedPageRange();
     for (let i = 0; i < range.count; i++) {
       doc.switchToPage(i);

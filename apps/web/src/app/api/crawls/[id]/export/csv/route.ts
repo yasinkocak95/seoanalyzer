@@ -32,11 +32,17 @@ export async function GET(
   if (!verifyExport(id, token))
     return NextResponse.json({ error: t("m161") }, { status: 403 });
   await requireCrawl(id);
+  try {
+  if (await db.finding.count({ where: { crawlId: id } }) > 2000)
+    return NextResponse.json({ error: t('m093') }, { status: 413 });
   const crawl = await db.crawl.findUnique({
     where: { id },
-    include: { findings: true },
+    include: { findings: { take: 2001 } },
   });
   if (!crawl) return NextResponse.json({ error: t("m092") }, { status: 404 });
+  if (!['COMPLETED', 'PARTIAL'].includes(crawl.status)) return NextResponse.json({ error: t('m160') }, { status: 409 });
+  if (crawl.findings.length > 2000 || crawl.findings.reduce((sum, f) => sum + (Array.isArray(f.affectedUrls) ? f.affectedUrls.length : 0), 0) > 20000)
+    return NextResponse.json({ error: t('m093') }, { status: 413 });
   const rows = [
     [t("m162"), t("m163"), t("m164"), t("m039"), t("m165"), t("m166"), t("m167"), t("m168")],
   ];
@@ -66,4 +72,5 @@ export async function GET(
       "cache-control": "private, no-store",
     },
   });
+  } catch { return NextResponse.json({ error: t('saas.error') }, { status: 503 }); }
 }

@@ -8,10 +8,15 @@ import { getLocale } from '@/lib/locale';
 import { getQueue } from '@/lib/queue';
 export const runtime = 'nodejs';
 export async function POST(req: NextRequest) {
-  const owner = await ownerHash();
-  if (!owner || !sameOrigin(req)) return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
-  try { if (!await rateLimit(`crawl-${owner}`, 10, 3600)) return NextResponse.json({ error: 'Rate limit exceeded' }, { status: 429 }); } catch { return NextResponse.json({ error: 'Service unavailable' }, { status: 503 }); }
   const t = translator(await getLocale());
+  const owner = await ownerHash();
+  if (!owner || !sameOrigin(req)) return NextResponse.json({ error: t('api.unauthorized') }, { status: 403 });
+  try {
+    // Browser workspace cookies are capabilities, not identities; rotating them cannot bypass admission.
+    const globalLimit = Number(process.env.CRAWL_GLOBAL_RATE_LIMIT ?? 100);
+    const limit = Number.isSafeInteger(globalLimit) && globalLimit > 0 ? globalLimit : 100;
+    if (!await rateLimit(`crawl-${owner}`, 10, 3600) || !await rateLimit('crawl-global', limit, 3600)) return NextResponse.json({ error: t('api.rateLimited') }, { status: 429 });
+  } catch { return NextResponse.json({ error: t('api.serviceUnavailable') }, { status: 503 }); }
   let body: { url: string; full?: boolean; force?: boolean }, safe: URL;
   try {
     body = await req.json();

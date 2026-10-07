@@ -35,7 +35,8 @@ services:
       REDIS_URL: redis://redis:6379
       NEXT_PUBLIC_APP_URL: http://localhost:3000
       CACHE_TTL_SECONDS: 1800
-      EXPORT_SIGNING_SECRET: yerel-gelistirme-icin-degistirin
+      CRAWL_GLOBAL_RATE_LIMIT: ${CRAWL_GLOBAL_RATE_LIMIT:-100}
+      EXPORT_SIGNING_SECRET: ${EXPORT_SIGNING_SECRET:-}
     ports: ["3000:3000"]
     depends_on:
       migrate: { condition: service_completed_successfully }

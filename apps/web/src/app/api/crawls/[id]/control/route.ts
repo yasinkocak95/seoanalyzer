@@ -22,11 +22,11 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
       // A pause takes effect after the active batch; do not launch a second processor.
       const queue = getQueue(), active = await queue.getJobs(['active']);
       if (active.some(job => job.data.crawlId === id)) return NextResponse.json({ error: t('m160') }, { status: 409 });
-      const changed = await db.crawl.updateMany({ where: { id, status: crawl.status }, data: { status: 'QUEUED', statusMessage: turkish('m159') } });
+      const changed = await db.crawl.updateMany({ where: { id, status: crawl.status }, data: { status: 'QUEUED', startedAt: new Date(), statusMessage: turkish('m159') } });
       if (!changed.count) return NextResponse.json({ error: t('m160') }, { status: 409 });
       try { await queue.add('crawl', { crawlId: id, rootUrl: crawl.rootUrl }, { jobId: `${id}-${Date.now()}`, attempts: 2, backoff: { type: 'exponential', delay: 3000 } }); }
       catch (error) {
-        await db.crawl.updateMany({ where: { id, status: 'QUEUED' }, data: { status: crawl.status, statusMessage: crawl.statusMessage } });
+        await db.crawl.updateMany({ where: { id, status: 'QUEUED' }, data: { status: crawl.status, startedAt: crawl.startedAt, statusMessage: crawl.statusMessage } });
         throw error;
       }
       return NextResponse.json({ status: 'QUEUED' });
