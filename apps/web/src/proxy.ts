@@ -1,3 +1,4 @@
+import { randomBytes } from 'node:crypto';
 import { NextRequest, NextResponse } from 'next/server';
 export function proxy(request: NextRequest) {
   const headers = new Headers(request.headers);
@@ -6,8 +7,14 @@ export function proxy(request: NextRequest) {
   if (request.nextUrl.pathname === '/') headers.set('x-seo-locale', 'tr');
   if (/^\/en\/?$/.test(request.nextUrl.pathname)) headers.set('x-seo-locale', 'en');
   const response=NextResponse.next({request:{headers}});
+  if (/^\/(?:api|rapor|tarama|taramalar|projeler|karsilastir|shared)(?:\/|$)/.test(request.nextUrl.pathname)) {
+    response.headers.set('Cache-Control', 'private, no-store');
+    response.headers.set('Referrer-Policy', 'no-referrer');
+    response.headers.set('X-Robots-Tag', 'noindex, nofollow');
+  }
   const locale=headers.get('x-seo-locale');
   if(locale && request.cookies.get('seo-locale')?.value!==locale)response.cookies.set('seo-locale',locale,{path:'/',maxAge:31536000,httpOnly:true,sameSite:'lax',secure:request.nextUrl.protocol==='https:'});
+  if (!/^[a-f0-9]{64}$/.test(request.cookies.get('seo-workspace')?.value ?? '')) response.cookies.set('seo-workspace', randomBytes(32).toString('hex'), { path: '/', httpOnly: true, sameSite: 'strict', secure: request.nextUrl.protocol === 'https:', maxAge: 31536000 });
   return response;
 }
 export const config = { matcher: ['/((?!_next/static|_next/image|favicon.ico).*)'] };

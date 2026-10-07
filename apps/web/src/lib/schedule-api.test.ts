@@ -1,0 +1,13 @@
+import { beforeEach, it, expect, vi } from 'vitest';
+const mocks = vi.hoisted(() => ({ owner: vi.fn(), crawl: vi.fn(), upsert: vi.fn(), disable: vi.fn(), safe: vi.fn() }));
+vi.mock('@seo/db', () => ({ db: { crawl: { findFirst: mocks.crawl }, crawlSchedule: { upsert: mocks.upsert, updateMany: mocks.disable } } }));
+vi.mock('./access', async original => ({ ...await original<typeof import('./access')>(), ownerHash: mocks.owner }));
+vi.mock('./rate-limit', () => ({ rateLimit: async () => true }));
+vi.mock('@seo/shared', async original => ({ ...await original<typeof import('@seo/shared')>(), assertSafeUrl: mocks.safe }));
+import { POST, DELETE } from '../app/api/projects/[host]/schedule/route';
+const context = { params: Promise.resolve({ host: 'example.com' }) };
+const req = (frequency = 'WEEKLY') => new Request('https://example.com/api/projects/example.com/schedule', { method: 'POST', body: JSON.stringify({ frequency }) });
+beforeEach(() => { vi.clearAllMocks(); mocks.owner.mockResolvedValue('owner'); mocks.crawl.mockResolvedValue({ rootUrl: 'https://example.com/', fullCrawl: true }); mocks.upsert.mockResolvedValue({ enabled: true, frequency: 'WEEKLY' }); });
+it('configures a unique schedule from an owned existing crawl', async () => { expect((await POST(req(), context)).status).toBe(200); expect(mocks.crawl).toHaveBeenCalledWith(expect.objectContaining({ where: { ownerHash: 'owner', normalizedHost: 'example.com' } })); expect(mocks.upsert).toHaveBeenCalledWith(expect.objectContaining({ where: { ownerHash_normalizedHost: { ownerHash: 'owner', normalizedHost: 'example.com' } }, create: expect.objectContaining({ rootUrl: 'https://example.com/', fullCrawl: true }) })); });
+it('rejects unknown frequencies and projects', async () => { expect((await POST(req('DAILY'), context)).status).toBe(400); mocks.crawl.mockResolvedValue(null); expect((await POST(req(), context)).status).toBe(404); expect(mocks.upsert).not.toHaveBeenCalled(); });
+it('disables only the caller’s plan', async () => { expect((await DELETE(req(), context)).status).toBe(200); expect(mocks.disable).toHaveBeenCalledWith({ where: { ownerHash: 'owner', normalizedHost: 'example.com' }, data: { enabled: false } }); });

@@ -1,0 +1,16 @@
+import { beforeEach, it, expect, vi } from 'vitest';
+const mocks = vi.hoisted(() => ({ guard: vi.fn(), rate: vi.fn(), crawl: vi.fn(), findings: vi.fn(), record: vi.fn(), update: vi.fn(), add: vi.fn() }));
+vi.mock('@seo/db', () => ({ db: { crawl: { findUnique: mocks.crawl }, finding: { findMany: mocks.findings }, fixVerification: { upsert: mocks.record, updateMany: mocks.update } } }));
+vi.mock('./access', async original => ({ ...await original<typeof import('./access')>(), requireCrawl: mocks.guard }));
+vi.mock('./rate-limit', () => ({ rateLimit: mocks.rate }));
+vi.mock('./queue', () => ({ getVerifyQueue: () => ({ add: mocks.add }) }));
+import { POST } from '../app/api/crawls/[id]/verify/route';
+const req = (body: unknown) => new Request('https://example.com/api/crawls/c/verify', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+const context = { params: Promise.resolve({ id: 'c' }) };
+beforeEach(() => { vi.clearAllMocks(); mocks.guard.mockResolvedValue('owner'); mocks.rate.mockResolvedValue(true); mocks.crawl.mockResolvedValue({ status: 'COMPLETED' }); mocks.findings.mockResolvedValue([{ affectedUrls: ['https://example.com/a'] }]); mocks.record.mockResolvedValue({ id: 'v', generation: '', status: 'FIXED' }); mocks.update.mockResolvedValue({ count: 1 }); });
+it('queues targeted URLs from persisted findings with a durable generation', async () => { expect((await POST(req({ code: 'TITLE_MISSING' }), context)).status).toBe(202); expect(mocks.update).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ targets: ['https://example.com/a'], status: 'QUEUED' }) })); expect(mocks.add).toHaveBeenCalledWith('verify', { verificationId: 'v', generation: expect.any(String) }, expect.objectContaining({ attempts: 2 })); });
+it('rejects an arbitrary URL that does not belong to this finding', async () => { expect((await POST(req({ code: 'TITLE_MISSING', url: 'http://169.254.169.254/' }), context)).status).toBe(400); expect(mocks.add).not.toHaveBeenCalled(); });
+it('requires a URL for oversized groups', async () => { mocks.findings.mockResolvedValue([{ affectedUrls: Array.from({ length: 101 }, (_, i) => `https://example.com/${i}`) }]); expect((await POST(req({ code: 'TITLE_MISSING' }), context)).status).toBe(413); });
+it('does not enqueue duplicates after a concurrent claim', async () => { mocks.update.mockResolvedValue({ count: 0 }); expect((await POST(req({ code: 'TITLE_MISSING' }), context)).status).toBe(202); expect(mocks.add).not.toHaveBeenCalled(); });
+it('records unsupported verification as uncertain with a date', async () => { const r = await POST(req({ code: 'DUPLICATE_TITLE' }), context); expect((await r.json()).status).toBe('COULD_NOT_VERIFY'); expect(mocks.update).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ checkedAt: expect.any(Date) }) })); expect(mocks.add).not.toHaveBeenCalled(); });
+it('repairs an enqueue failure into a completed uncertain state', async () => { mocks.add.mockRejectedValue(new Error('Redis')); expect((await POST(req({ code: 'TITLE_MISSING' }), context)).status).toBe(503); expect(mocks.update).toHaveBeenLastCalledWith(expect.objectContaining({ data: { status: 'COULD_NOT_VERIFY', checkedAt: expect.any(Date) } })); });

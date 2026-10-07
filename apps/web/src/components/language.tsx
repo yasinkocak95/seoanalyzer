@@ -13,6 +13,12 @@ export function LanguageSwitcher() {
   const locale = useLocale(), path = usePathname();
   const target = (language: Locale) => path === '/' || path === '/en' || path === '/en/' ? (language === 'en' ? '/en/' : '/') : path;
   return <div className="language-switcher" aria-label="Language">
-    {(['tr', 'en'] as const).map(language => <a key={language} href={`/api/language?lang=${language}&returnTo=${encodeURIComponent(target(language))}`} lang={language} aria-current={locale === language ? 'true' : undefined} className={locale === language ? 'text-action underline' : 'text-muted'}>{language.toUpperCase()}</a>)}
+    {(['tr', 'en'] as const).map(language => <a key={language} href={`/api/language?lang=${language}&returnTo=${encodeURIComponent(target(language))}`} onClick={async event => {
+      if (path !== '/shared') return;
+      event.preventDefault();
+      // Keep the sharing capability in the fragment throughout language changes.
+      const response = await fetch(`/api/language?lang=${language}`, { method: 'POST' });
+      if (response.ok) location.reload();
+    }} lang={language} aria-current={locale === language ? 'true' : undefined} className={locale === language ? 'text-action underline' : 'text-muted'}>{language.toUpperCase()}</a>)}
   </div>;
 }

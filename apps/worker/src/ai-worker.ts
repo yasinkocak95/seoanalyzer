@@ -1,3 +1,4 @@
+import { enqueueExecutiveSummaries } from './ai-auto.js';
 import { Queue, Worker } from 'bullmq';
 import type { Redis } from 'ioredis';
 import { db, type Prisma } from '@seo/db';
@@ -33,11 +34,14 @@ export function startAiWorker(connection: Redis) {
     if (job && job.attemptsMade >= (job.opts.attempts ?? 1)) void db.aiAnalysis.updateMany({ where: { id: job.data.analysisId, generation: job.data.generation, status: { in: ['QUEUED', 'RUNNING'] } }, data: { status: 'FAILED', error: 'ai.providerUnavailable' } }).catch(() => {});
   });
   let reconciling = false;
-  return { async reconcile() {
+  return { enqueueCompleted: (crawlId: string) => enqueueExecutiveSummaries(crawlId, queue), async reconcile() {
     if (!getAiConfig().apiKey) return;
     if (reconciling) return;
     reconciling = true;
     try {
+      // Pick up completions missed by process restarts, including a locale queued only halfway.
+      const completed = await db.crawl.findMany({ where: { status: 'COMPLETED', OR: [{ aiAnalyses: { none: { locale: 'tr' } } }, { aiAnalyses: { none: { locale: 'en' } } }, { aiAnalyses: { some: { status: 'IDLE' } } }] }, orderBy: { completedAt: 'desc' }, take: 20, select: { id: true } });
+      for (const crawl of completed) await enqueueExecutiveSummaries(crawl.id, queue);
       // Repair DB/Redis enqueue gaps and final failures after a DB outage.
       const pending = await db.aiAnalysis.findMany({ where: { status: { in: ['QUEUED', 'RUNNING'] }, updatedAt: { lt: new Date(Date.now() - 60000) } }, orderBy: { updatedAt: 'asc' }, take: 100 });
       for (const analysis of pending) {

@@ -30,3 +30,16 @@ export function getAiQueue() {
   }
   return aiGlobal.aiQueue;
 }
+
+import { VERIFY_QUEUE } from '@seo/shared';
+const verifyGlobal = globalThis as unknown as { verifyQueue?: Queue };
+export function getVerifyQueue() {
+  if (!verifyGlobal.verifyQueue) {
+    const connection = new Redis(process.env.REDIS_URL ?? 'redis://localhost:6379', { maxRetriesPerRequest: 1, connectTimeout: 5000, retryStrategy: times => times <= 2 ? 500 : null });
+    connection.on('error', () => console.error('Verification connection unavailable'));
+    connection.on('end', () => { verifyGlobal.verifyQueue = undefined; });
+    verifyGlobal.verifyQueue = new Queue(VERIFY_QUEUE, { connection });
+    verifyGlobal.verifyQueue.on('error', () => console.error('Verification queue unavailable'));
+  }
+  return verifyGlobal.verifyQueue;
+}

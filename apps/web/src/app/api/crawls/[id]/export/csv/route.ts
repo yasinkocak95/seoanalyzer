@@ -1,3 +1,4 @@
+import { requireCrawl } from '@/lib/access';
 import { getLocale } from '@/lib/locale';
 import { translator,turkish,localeOf,localizeFinding,localizeEvidence } from '@seo/shared/i18n';
 import { NextResponse } from "next/server";
@@ -25,10 +26,12 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> },
 ) {
   const locale=localeOf(new URL(request.url).searchParams.get('lang')??await getLocale()),t=translator(locale);
-  const { id } = await params,
-    token = new URL(request.url).searchParams.get("token");
+  const { id } = await params;
+
+  const     token = new URL(request.url).searchParams.get("token");
   if (!verifyExport(id, token))
     return NextResponse.json({ error: t("m161") }, { status: 403 });
+  await requireCrawl(id);
   const crawl = await db.crawl.findUnique({
     where: { id },
     include: { findings: true },

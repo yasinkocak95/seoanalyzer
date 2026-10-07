@@ -1,3 +1,5 @@
+import { scheduleRunner } from './schedules.js';
+import { startVerificationWorker } from './verification.js';
 import { turkish } from '@seo/shared/i18n';
 import { Queue, Worker } from 'bullmq';
 import { Redis } from 'ioredis';
@@ -10,6 +12,7 @@ import { startAiWorker } from './ai-worker.js';
 try { loadEnvFile(fileURLToPath(new URL('../../../.env', import.meta.url))); }
 catch (error) { if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error; }
 const connection = new Redis(process.env.REDIS_URL ?? 'redis://localhost:6379', { maxRetriesPerRequest: null });
+const verificationWorker = startVerificationWorker(connection);
 const aiWorker = startAiWorker(connection);
 const worker = new Worker<CrawlJob>(CRAWL_QUEUE, async job => {
   try {
@@ -37,7 +40,10 @@ worker.on('failed', (job, error) => {
   if(job && (job.attemptsMade >= (job.opts.attempts??1) || /stalled more than/i.test(error.message)))
     void db.crawl.updateMany({where:{id:job.data.crawlId,status:{in:['QUEUED','RUNNING']}},data:{status:'FAILED',error:error.message,statusMessage:turkish('m017')}}).catch(error=>console.error('Final crawl status could not be saved',error));
 });
-worker.on('completed', job => console.log(`Tarama işi tamamlandı: ${job.data.crawlId}`));
+worker.on('completed', job => {
+  console.log(`Tarama işi tamamlandı: ${job.data.crawlId}`);
+  void aiWorker.enqueueCompleted(job.data.crawlId).catch(() => console.error('Automatic AI enqueue deferred'));
+});
 console.log('SEO tarama işçisi hazır.');
 
 // Retry exhaustion can happen while PostgreSQL is unavailable. Reconcile durable
@@ -55,7 +61,10 @@ export async function reconcileFailedJobs() {
   }catch(error){console.error('Failed crawl reconciliation deferred',error)}
   finally{recovering=false}
 }
-const recoveryTimer=setInterval(()=>{ void reconcileFailedJobs(); void aiWorker.reconcile(); },30000);
+const runSchedules = scheduleRunner(recoveryQueue);
+const recoveryTimer=setInterval(()=>{ void runSchedules().catch(() => console.error('Schedule processing deferred')); void reconcileFailedJobs(); void aiWorker.reconcile(); void verificationWorker.reconcile().catch(() => console.error('Verification recovery deferred'));  },30000);
 recoveryTimer.unref();
 void reconcileFailedJobs();
-void aiWorker.reconcile();
+void aiWorker.reconcile(); void verificationWorker.reconcile().catch(() => console.error('Verification recovery deferred'));
+
+void runSchedules().catch(() => console.error('Schedule processing deferred'));

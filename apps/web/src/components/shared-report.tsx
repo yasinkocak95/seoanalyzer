@@ -1,0 +1,9 @@
+'use client';
+import { useEffect, useState } from 'react';
+import { useLocale, useTranslation } from './language';
+import type { publicReport } from '@/lib/public-report';
+export function SharedReport() {
+  const locale = useLocale(), t = useTranslation(), [data, setData] = useState<ReturnType<typeof publicReport> | null>(null), [error, setError] = useState(false);
+  useEffect(() => { const controller = new AbortController(); setData(null); setError(false); const token = location.hash.slice(1); fetch('/api/shared', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ token, locale }), signal: controller.signal }).then(async r => { if (!r.ok) throw new Error(); setData(await r.json()); }).catch(() => { if (!controller.signal.aborted) setError(true); }); return () => controller.abort(); }, [locale]);
+  return <main className="container py-10"><h1 className="text-3xl font-black text-brand">{t('saas.sharedReport')}</h1>{error ? <p className="card mt-6 p-6" role="alert">{t('saas.shareUnavailable')}</p> : !data ? <p className="card mt-6 p-6" role="status">{t('saas.loading')}</p> : <><p className="my-5 text-muted">{data.host} · {data.completedAt}</p><div className="card mb-6 p-6"><strong>{t('ui.score')}: {data.score ?? '—'}</strong></div>{data.findings.map(f => <article className="card mb-4 p-5" key={f.code}><h2 className="font-bold">{f.title}</h2><p className="my-2 text-sm">{f.description}</p><p className="rounded-lg bg-blue-50 p-3 text-sm">{f.recommendation}</p><p className="mt-3 text-muted">{f.affectedCount} {t('m039')}</p><details className="mt-2"><summary>{t('m139')}</summary>{f.samples.map(u => <p className="break-all text-sm" key={u}>{u}</p>)}</details></article>)}{!data.findings.length && <p className="card p-6">{t('m352')}</p>}</>}</main>;
+}

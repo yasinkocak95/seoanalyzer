@@ -43,6 +43,7 @@ export function groupFindings(findings: RawFinding[]): FindingGroup[] {
       byCode.get(f.code) ??
       ({ ...f, urls: [], groups: [] } as unknown as FindingGroup);
     byCode.set(f.code, g);
+    if (order[f.severity] < order[g.severity]) g.severity = f.severity;
     const urls = list<string>(f.affectedUrls),
       evidence = list<Evidence>(f.evidence);
     if (LABELED.has(f.code)) {

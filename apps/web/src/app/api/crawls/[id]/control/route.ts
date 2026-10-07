@@ -1,10 +1,13 @@
+import { requireCrawl, sameOrigin } from '@/lib/access';
 import { NextResponse } from 'next/server';
 import { db } from '@seo/db';
 import { getQueue } from '@/lib/queue';
 import { getLocale } from '@/lib/locale';
 import { translator, turkish } from '@seo/shared/i18n';
 export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
+  if (!sameOrigin(request)) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   const t = translator(await getLocale()), { id } = await params;
+  await requireCrawl(id);
   let body: { action?: string };
   try { body = await request.json(); if (!body) throw new Error(); }
   catch { return NextResponse.json({ error: t('m372') }, { status: 400 }); }

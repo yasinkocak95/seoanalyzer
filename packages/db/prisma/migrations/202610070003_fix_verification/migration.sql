@@ -1,0 +1,2 @@
+CREATE TABLE "FixVerification" ("id" TEXT PRIMARY KEY, "crawlId" TEXT NOT NULL REFERENCES "Crawl"("id") ON DELETE CASCADE, "code" TEXT NOT NULL, "targets" JSONB NOT NULL, "status" TEXT NOT NULL DEFAULT 'QUEUED', "generation" TEXT NOT NULL, "checkedAt" TIMESTAMP(3), "updatedAt" TIMESTAMP(3) NOT NULL, "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP);
+CREATE UNIQUE INDEX "FixVerification_crawlId_code_key" ON "FixVerification"("crawlId", "code");

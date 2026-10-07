@@ -1,0 +1,4 @@
+import { it, expect } from 'vitest';
+import { nextScheduledRun, healthChange } from './schedule.js';
+it('uses UTC weekly and calendar monthly intervals, clamping month ends', () => { expect(nextScheduledRun(new Date('2026-01-31T10:00:00Z'), 'MONTHLY').toISOString()).toBe('2026-02-28T10:00:00.000Z'); expect(nextScheduledRun(new Date('2026-01-31T10:00:00Z'), 'WEEKLY').toISOString()).toBe('2026-02-07T10:00:00.000Z'); });
+it('produces health events only for measured changes', () => { expect(healthChange({ score: 80, critical: 1 }, { score: 80, critical: 1 })).toBeNull(); expect(healthChange({ score: null, critical: 1 }, { score: 80, critical: 2 })).toMatchObject({ scoreDelta: null, criticalDelta: 1 }); expect(healthChange({ score: 80, critical: 1 }, { score: 81, critical: 1 })).toMatchObject({ scoreDelta: 1 }); });

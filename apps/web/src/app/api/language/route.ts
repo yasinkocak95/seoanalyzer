@@ -1,5 +1,13 @@
 import { NextResponse } from 'next/server';
 import { localeOf } from '@seo/shared/i18n';
+import { sameOrigin } from '@/lib/access';
+export async function POST(request: Request) {
+  if (!sameOrigin(request)) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+  const url = new URL(request.url), locale = localeOf(url.searchParams.get('lang'));
+  const response = NextResponse.json({ locale });
+  response.cookies.set('seo-locale', locale, { path: '/', maxAge: 31536000, httpOnly: true, sameSite: 'lax', secure: url.protocol === 'https:' });
+  return response;
+}
 export async function GET(request: Request) {
   const url = new URL(request.url), locale = localeOf(url.searchParams.get('lang'));
   const path = url.searchParams.get('returnTo') ?? (locale === 'en' ? '/en/' : '/');

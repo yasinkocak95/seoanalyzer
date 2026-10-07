@@ -1,3 +1,5 @@
+import { requireCrawl } from '@/lib/access';
+import { ShareControls } from '@/components/share-controls';
 export const metadata={robots:{index:false,follow:false}};
 import { getLocale } from '@/lib/locale';
 import { translator, numberLocale, localizeFinding, turkish, type Locale } from '@seo/shared/i18n';
@@ -35,6 +37,7 @@ export default async function Report({
 }) {
   const locale=await getLocale(),translate=translator(locale);
   const { id } = await params;
+  await requireCrawl(id);
   const crawl = await db.crawl.findUnique({
     where: { id },
     include: { findings: true, pages: { orderBy: { url: "asc" }, take: 200 } },
@@ -50,6 +53,7 @@ export default async function Report({
     passed = passedRules(crawl.checkedRules, groups)?.map(r=>({...r,title:translate(r.title)}));
   const previous = await db.crawl.findFirst({
       where: {
+        ownerHash: crawl.ownerHash,
         normalizedHost: crawl.normalizedHost,
         status: "COMPLETED",
         createdAt: { lt: crawl.createdAt },
@@ -126,6 +130,7 @@ export default async function Report({
           <RescanButton url={crawl.rootUrl} full label={translate("m342")} />
         </div>
       )}
+      <ShareControls crawlId={id} />
       <ScoreCard locale={locale} score={crawl.score} previous={previous?.score ?? null} />
       <div className="report-kpis mb-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <S locale={locale} i={FileText} l={translate("m062")} n={crawl.processedPages} />
@@ -153,7 +158,7 @@ export default async function Report({
       <h2 className="text-2xl font-black text-brand">{translate("m064")}</h2>
       <p className="mb-5 mt-1 text-sm text-muted">
          {translate("m130")} </p>
-      <ReportFindings findings={groups} />
+      <ReportFindings findings={groups} crawlId={id} />
       {templates.length > 0 && (
         <section className="mt-12">
           <h2 className="text-2xl font-black text-brand">{translate("m068")}</h2>

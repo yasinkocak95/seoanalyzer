@@ -52,6 +52,7 @@ export async function getReportData(crawlId: string,locale:Locale='tr') {
     );
   const previous = await db.crawl.findFirst({
     where: {
+      ownerHash: crawl.ownerHash,
       normalizedHost: crawl.normalizedHost,
       status: "COMPLETED",
       createdAt: { lt: crawl.createdAt },

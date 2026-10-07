@@ -1,0 +1,12 @@
+import { beforeEach, it, expect, vi } from 'vitest';
+const mocks = vi.hoisted(() => ({ token: 'a'.repeat(64) as string | undefined, find: vi.fn() }));
+vi.mock('next/headers', () => ({ cookies: async () => ({ get: () => mocks.token ? { value: mocks.token } : undefined }) }));
+vi.mock('next/navigation', () => ({ notFound: () => { throw new Error('Not found'); } }));
+vi.mock('@seo/db', () => ({ db: { crawl: { findFirst: mocks.find } } }));
+import { ownerHash, requireCrawl, digest, newCapability, sameOrigin } from './access';
+beforeEach(() => { mocks.token = 'a'.repeat(64); vi.clearAllMocks(); mocks.find.mockResolvedValue(null); });
+it('does not disclose another workspace or unassigned legacy crawl', async () => { await expect(requireCrawl('private')).rejects.toThrow('Not found'); expect(mocks.find).toHaveBeenCalledWith({ where: { id: 'private', ownerHash: digest(mocks.token!) }, select: { id: true } }); });
+it('authorizes owned records without putting the session capability in the database', async () => { mocks.find.mockResolvedValue({ id: 'private' }); expect(await requireCrawl('private')).toBe(digest(mocks.token!)); expect(await ownerHash()).not.toBe(mocks.token); });
+it('rejects absent or malformed sessions before querying private data', async () => { mocks.token = undefined; await expect(requireCrawl('private')).rejects.toThrow(); mocks.token = 'forged'; expect(await ownerHash()).toBeNull(); expect(mocks.find).not.toHaveBeenCalled(); });
+it('creates high entropy distinct capabilities', () => { const a = newCapability(), b = newCapability(); expect(a).toMatch(/^[a-f0-9]{64}$/); expect(a).not.toBe(b); });
+it('rejects cross-site mutations', () => { expect(sameOrigin(new Request('https://example.com/api', { headers: { origin: 'https://evil.com' } }))).toBe(false); expect(sameOrigin(new Request('https://example.com/api', { headers: { 'sec-fetch-site': 'cross-site' } }))).toBe(false); });

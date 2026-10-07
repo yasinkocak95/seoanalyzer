@@ -8,7 +8,7 @@ body > main { min-height: 65vh; }
 h1,h2,h3 { text-wrap: balance; }
 button,input,a,summary { -webkit-tap-highlight-color: transparent; }
 a,button,input,summary { transition: color .18s, background-color .18s, border-color .18s, box-shadow .18s, transform .18s; }
-:where(a,button,input,summary):focus-visible { outline: 3px solid #60a5fa; outline-offset: 4px; }
+:where(a,button,input,select,textarea,summary):focus-visible { outline: 3px solid #60a5fa; outline-offset: 4px; }
 input[type=checkbox] { accent-color: var(--action); width: 16px; height: 16px; flex-shrink: 0; }
 .container { width: min(1240px,calc(100% - 64px)); }
 .card { border-radius: 18px; box-shadow: 0 2px 4px #10203b03,0 8px 24px #10203b03; }
@@ -25,8 +25,7 @@ input[type=checkbox] { accent-color: var(--action); width: 16px; height: 16px; f
 .success { background: #ecfdf5; color: #047857; }
 .site-header { position: sticky; top: 0; z-index: 30; background: #ffffffed; backdrop-filter: blur(16px); border-bottom: 1px solid var(--border); }
 .site-navbar { min-height: 76px; display: flex; align-items: center; justify-content: space-between; gap: 24px; }
-.site-brand { display: inline-flex; align-items: center; gap: 10px; font-size: 19px; font-weight: 800; letter-spacing: -.7px; color: var(--brand); white-space: nowrap; }
-.brand-mark { display: grid; place-items: center; width: 39px; height: 39px; border-radius: 12px; color: #fff; background: linear-gradient(145deg,#3b82f6,#1d4ed8); box-shadow: 0 4px 10px #2563eb24,inset 0 1px 0 #ffffff30; }
+.site-brand { display: inline-flex; align-items: center; flex-shrink: 0; line-height: 0; }
 .site-nav { display: flex; align-items: center; gap: 24px; font-size: 13px; font-weight: 650; }
 .site-nav > a { display: inline-flex; align-items: center; gap: 7px; min-height: 40px; }
 .site-nav > a:hover { color: var(--action); }
@@ -57,9 +56,9 @@ details summary { min-height: 36px; }
 .crawl-row small { color: var(--muted); line-height: 1.8; }
 .crawl-row > svg { width: 18px; color: #8295ae; flex-shrink: 0; }
 @media(max-width:900px) { .footer-grid { grid-template-columns: 1.5fr 1fr 1fr; gap: 32px; } .footer-language { grid-column: 1 / -1; flex-direction: row; flex-wrap: wrap; align-items: center; gap: 16px; } .footer-language h2 { margin: 0; } .footer-language > p { max-width: none; } }
-@media(max-width:640px) { .container { width: calc(100% - 36px); } .site-navbar { min-height: 68px; gap: 12px; } .site-brand { font-size: 16px; gap: 8px; } .brand-mark { width: 34px; height: 34px; border-radius: 10px; } .site-nav { gap: 12px; font-size: 12px; } .nav-analysis { display: none !important; } .site-footer { padding-top: 38px; } .footer-grid { grid-template-columns: 1fr 1fr; gap: 28px; padding-bottom: 30px; } .footer-brand { grid-column: 1 / -1; } .footer-bottom > span { display: none; } .crawl-row { flex-wrap: wrap; gap: 12px; padding: 18px; } .crawl-row > span:nth-child(2) { flex-basis: calc(100% - 100px); } .crawl-row > svg { margin-left: auto; } }
+@media(max-width:640px) { .container { width: calc(100% - 36px); } .site-navbar { min-height: 68px; gap: 12px; } .site-nav { gap: 12px; font-size: 12px; } .nav-analysis { display: none !important; } .site-footer { padding-top: 38px; } .footer-grid { grid-template-columns: 1fr 1fr; gap: 28px; padding-bottom: 30px; } .footer-brand { grid-column: 1 / -1; } .footer-bottom > span { display: none; } .crawl-row { flex-wrap: wrap; gap: 12px; padding: 18px; } .crawl-row > span:nth-child(2) { flex-basis: calc(100% - 100px); } .crawl-row > svg { margin-left: auto; } }
 @media(prefers-reduced-motion:reduce) { html { scroll-behavior: auto; } *,*::before,*::after { transition: none !important; } }
-@media(max-width:380px) { .site-brand { font-size: 14px; gap: 7px; } .brand-mark { width: 30px; height: 30px; } .site-nav { font-size: 11px; gap: 8px; } .site-navbar { gap: 10px; } }
+@media(max-width:380px) { .site-nav { font-size: 11px; gap: 8px; } .site-navbar { gap: 10px; } }
 /* Report workspace and persisted Claude insights. */
 .report-shell { padding-bottom: 80px; }
 .report-shell > div:first-child { border-bottom: 1px solid var(--border); padding-bottom: 28px; }
@@ -173,3 +172,19 @@ details summary { min-height: 36px; }
 .ai-priority-preview { flex-wrap: wrap; }
 @media(max-width:900px) { .report-heading > div:last-child { justify-content: flex-start; } .kpi-card { padding: 20px; } }
 @media(max-width:640px) { .report-shell { padding-top: 28px; padding-bottom: 44px; } .report-shell .score-card { padding: 22px; gap: 20px; } .score-ring { width: 102px; height: 102px; } .score-ring strong { font-size: 36px; } .score-card b { font-size: 18px; } .score-card > .flex-1 { min-width: 130px; } .score-card > .text-right { width: 100%; text-align: left; } .report-kpis { grid-template-columns: repeat(2,minmax(0,1fr)); gap: 10px; } .kpi-card { flex-direction: column; align-items: flex-start; gap: 12px; padding: 18px; } .finding-filters { width: 100%; } .finding-filters button { flex: 1 1 auto; padding-inline: 10px; } .finding-toggle { display: grid; grid-template-columns: 1fr auto; gap: 12px; padding: 18px; } .finding-toggle > .badge { grid-column: 1; justify-self: start; } .finding-toggle > .flex-1 { grid-row: 2; grid-column: 1 / -1; } .finding-toggle > svg { grid-column: 2; grid-row: 1; } .finding-content { padding: 18px; } .ai-header { padding: 22px 18px; } .ai-heading h2 { font-size: 23px; } .ai-summary { margin: 18px 18px 0; padding: 16px; } }
+
+/* Workspace screens use the existing card, action and focus system. */
+@media(max-width:480px) {
+  .site-navbar { flex-wrap: wrap; padding-block: 12px; }
+  .site-nav { flex-wrap: wrap; justify-content: flex-end; gap: 10px; }
+  select { max-width: 100%; min-width: 0; }
+}
+
+/* Display the supplied logo's 1185 x 237 artwork, excluding transparent margins.
+   Image proportions stay at 1200 x 378; the viewport only clips empty pixels. */
+.brand-logo-frame { position: relative; display: block; width: 220px; aspect-ratio: 1185 / 237; overflow: hidden; }
+.brand-logo { position: absolute; display: block; width: 101.265823%; max-width: none; height: auto; left: -1.181435%; top: -29.957806%; }
+.footer-brand .brand-logo-frame { width: 200px; }
+@media(max-width:900px) { .site-header .brand-logo-frame { width: 200px; } }
+@media(max-width:640px) { .site-header .brand-logo-frame { width: 180px; } }
+@media(max-width:380px) { .site-header .brand-logo-frame { width: 160px; } }

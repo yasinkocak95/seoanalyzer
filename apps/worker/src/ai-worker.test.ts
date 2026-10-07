@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 const mocks = vi.hoisted(() => ({ find: vi.fn(), update: vi.fn(), pending: vi.fn(), generate: vi.fn(), getJob: vi.fn(), add: vi.fn(), processor: null as any, events: new Map<string, Function>() }));
-vi.mock('@seo/db', () => ({ db: { aiAnalysis: { findUnique: mocks.find, updateMany: mocks.update, findMany: mocks.pending } } }));
+vi.mock('@seo/db', () => ({ db: { crawl: { findMany: async () => [] }, aiAnalysis: { findUnique: mocks.find, updateMany: mocks.update, findMany: mocks.pending } } }));
 vi.mock('@seo/shared/ai-config', () => ({ getAiConfig: () => ({ apiKey: process.env.ANTHROPIC_API_KEY?.trim() || '' }) }));
 vi.mock('./ai-analysis.js', async importOriginal => ({ ...await importOriginal<typeof import('./ai-analysis.js')>(), generateAiAnalysis: mocks.generate }));
 vi.mock('bullmq', () => ({

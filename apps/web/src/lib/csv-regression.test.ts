@@ -1,3 +1,5 @@
+vi.mock('@/lib/access', () => ({ requireCrawl: async () => 'owner', ownerHash: async () => 'owner', sameOrigin: (request: Request) => !request.headers.get('origin') || request.headers.get('origin') === new URL(request.url).origin }));
+vi.mock('@/lib/rate-limit', () => ({ rateLimit: async () => true }));
 import { describe,it,expect,vi } from 'vitest';
 const mocks=vi.hoisted(()=>({findUnique:vi.fn(),getTemplates:vi.fn(async()=>[])}));
 vi.mock('@seo/db',()=>({db:{crawl:{findUnique:mocks.findUnique}}}));

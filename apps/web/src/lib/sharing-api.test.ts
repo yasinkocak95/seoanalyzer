@@ -1,0 +1,16 @@
+import { beforeEach, it, expect, vi } from 'vitest';
+const mocks = vi.hoisted(() => ({ guard: vi.fn(), limited: vi.fn(), create: vi.fn(), revoke: vi.fn(), share: vi.fn(), crawl: vi.fn(), count: vi.fn() }));
+vi.mock('@seo/db', () => ({ db: { reportShare: { create: mocks.create, updateMany: mocks.revoke, findFirst: mocks.share }, crawl: { findUnique: mocks.crawl }, finding: { count: mocks.count } } }));
+vi.mock('./access', async original => ({ ...await original<typeof import('./access')>(), requireCrawl: mocks.guard }));
+vi.mock('./rate-limit', () => ({ rateLimit: mocks.limited }));
+import { POST, DELETE } from '../app/api/crawls/[id]/share/route';
+import { POST as resolve } from '../app/api/shared/route';
+import { digest } from './access';
+const context = { params: Promise.resolve({ id: 'c' }) };
+const req = (body = {}, origin = 'https://example.com') => new Request('https://example.com/api/shared', { method: 'POST', headers: { origin, 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+beforeEach(() => { vi.clearAllMocks(); mocks.guard.mockResolvedValue('owner'); mocks.limited.mockResolvedValue(true); mocks.crawl.mockResolvedValue({ status: 'COMPLETED', normalizedHost: 'example.com', score: 80, completedAt: null, findings: [] }); mocks.count.mockResolvedValue(0); mocks.share.mockResolvedValue(null); });
+it('stores only a hash and gives a fragment capability with expiry', async () => { const r = await POST(req(), context), result = await r.json(), token = result.path.split('#')[1]; expect(r.status).toBe(200); expect(mocks.create).toHaveBeenCalledWith({ data: { crawlId: 'c', tokenHash: digest(token), expiresAt: expect.any(Date) } }); expect(JSON.stringify(mocks.create.mock.calls)).not.toContain(token); });
+it('revokes all links for the authorized report', async () => { expect((await DELETE(req(), context)).status).toBe(200); expect(mocks.revoke).toHaveBeenCalledWith(expect.objectContaining({ where: { crawlId: 'c', revokedAt: null } })); });
+it('does not resolve expired, revoked or unknown capabilities', async () => { const r = await resolve(req({ token: 'a'.repeat(64), locale: 'en' })); expect(r.status).toBe(404); expect(mocks.share).toHaveBeenCalledWith(expect.objectContaining({ where: { tokenHash: digest('a'.repeat(64)), revokedAt: null, expiresAt: { gt: expect.any(Date) } } })); });
+it('returns read-only data without internal IDs, evidence or mutation links', async () => { mocks.share.mockResolvedValue({ crawlId: 'c' }); const r = await resolve(req({ token: 'a'.repeat(64), locale: 'en' })); expect(r.status).toBe(200); expect(await r.json()).toEqual({ host: 'example.com', score: 80, completedAt: null, counts: { critical: 0, warning: 0, info: 0 }, findings: [] }); expect(r.headers.get('cache-control')).toBe('no-store'); });
+it('fails closed under admission limits and rejects cross-site requests', async () => { mocks.limited.mockResolvedValue(false); expect((await resolve(req({ token: 'a'.repeat(64) }))).status).toBe(429); expect((await POST(req({}, 'https://evil.com'), context)).status).toBe(403); });

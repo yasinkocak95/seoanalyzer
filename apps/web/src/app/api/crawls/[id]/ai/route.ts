@@ -1,3 +1,5 @@
+import { rateLimit } from '@/lib/rate-limit';
+import { requireCrawl } from '@/lib/access';
 import { randomUUID } from 'node:crypto';
 import { NextResponse } from 'next/server';
 import { db } from '@seo/db';
@@ -12,6 +14,7 @@ export async function GET(_request: Request, { params }: Context) {
   const locale = await getLocale(), t = translator(locale), { id } = await params;
   const availability = idleAiSnapshot(locale);
   if (!availability.enabled) return NextResponse.json(availability, { headers: { 'Cache-Control': 'no-store' } });
+  await requireCrawl(id);
   try {
     if (!await db.crawl.findUnique({ where: { id }, select: { id: true } })) return NextResponse.json({ error: t('m157') }, { status: 404 });
     const analysis = await db.aiAnalysis.findUnique({ where: { crawlId_locale: { crawlId: id, locale } } });
@@ -26,6 +29,7 @@ export async function POST(request: Request, { params }: Context) {
   if ((origin && origin !== new URL(request.url).origin) || request.headers.get('sec-fetch-site') === 'cross-site') return NextResponse.json({ error: t('ai.invalidRequest') }, { status: 403 });
   const availability = idleAiSnapshot(locale);
   if (!availability.enabled) return NextResponse.json(availability, { headers: { 'Cache-Control': 'no-store' } });
+  await requireCrawl(id);
   let regenerate = false;
   try {
     const body = await request.json();
@@ -38,6 +42,8 @@ export async function POST(request: Request, { params }: Context) {
     if (crawl.status !== 'COMPLETED') return NextResponse.json({ error: t('ai.crawlNotReady') }, { status: 409 });
     const analysis = await db.aiAnalysis.upsert({ where: { crawlId_locale: { crawlId: id, locale } }, create: { crawlId: id, locale }, update: {} });
     if (['QUEUED', 'RUNNING'].includes(analysis.status) || (aiSnapshot(analysis).result && !regenerate)) return NextResponse.json(aiSnapshot(analysis));
+    const owner = await requireCrawl(id);
+    if (!await rateLimit(`ai-${owner}`, 10, 3600)) return NextResponse.json({ error: t('saas.error') }, { status: 429 });
     const generation = randomUUID();
     const claimed = await db.aiAnalysis.updateMany({ where: { id: analysis.id, generation: analysis.generation, status: { in: ['IDLE', 'COMPLETED', 'FAILED'] } }, data: { status: 'QUEUED', generation, error: null } });
     if (!claimed.count) {
