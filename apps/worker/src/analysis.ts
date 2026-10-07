@@ -1,3 +1,4 @@
+import { turkish } from '@seo/shared/i18n';
 import { createHash } from "node:crypto";
 import { db, type Severity } from "@seo/db";
 import {
@@ -36,6 +37,7 @@ export async function analyzeStoredPages(
   sitemapFound: boolean,
 ) {
   await db.finding.deleteMany({ where: { crawlId } });
+  await buildRedirectChains(crawlId);
   const brokenImages = await checkImages(crawlId);
   let cursor: string | undefined;
   do {
@@ -54,6 +56,7 @@ export async function analyzeStoredPages(
       title: r.title,
       description: r.description,
       canonical: r.canonical,
+      canonicalCount: r.socialTags && typeof r.socialTags === "object" && !Array.isArray(r.socialTags) ? Number(r.socialTags.canonicalCount??0) : undefined,
       robots: r.robots,
       h1: Array.isArray(r.h1) ? (r.h1 as string[]) : [],
       headings: Array.isArray(r.headings) ? (r.headings as never) : [],
@@ -103,23 +106,23 @@ export async function analyzeStoredPages(
     {
       field: "title" as const,
       code: "DUPLICATE_TITLE",
-      title: "Tekrarlanan sayfa başlığı",
+      title: turkish("m171"),
       description:
-        "Aynı title değeri birden fazla başarılı HTML sayfasında kullanılıyor.",
+        turkish("m172"),
     },
     {
       field: "description" as const,
       code: "DUPLICATE_DESCRIPTION",
-      title: "Tekrarlanan meta açıklama",
+      title: turkish("m173"),
       description:
-        "Aynı meta açıklama birden fazla başarılı HTML sayfasında kullanılıyor.",
+        turkish("m174"),
     },
     {
       field: "contentHash" as const,
       code: "DUPLICATE_CONTENT",
-      title: "Birebir aynı içerik adayı",
+      title: turkish("m175"),
       description:
-        "Metin özeti aynı olan başarılı HTML sayfaları bulundu. Bu teknik bir adaydır; Google değerlendirmesi değildir.",
+        turkish("m176"),
     },
   ];
   for (const c of configs) {
@@ -131,7 +134,7 @@ export async function analyzeStoredPages(
           crawlId,
           responseKind: "HTML",
           statusCode: { gte: 200, lt: 300 },
-          [c.field]: { not: null },
+          [c.field]: { notIn: [""] },
         },
         _count: { _all: true },
         having: { [c.field]: { _count: { gt: 1 } } },
@@ -164,7 +167,7 @@ export async function analyzeStoredPages(
           title: c.title,
           description: c.description,
           recommendation:
-            "Her sayfa için içeriğini ayırt eden özgün bir değer kullanın.",
+            turkish("m177"),
           affectedUrls: urls,
           evidence: urls.map((url) => ({ url, deger: value })),
         });
@@ -188,9 +191,9 @@ export async function analyzeStoredPages(
     await save(crawlId, {
       code: "ROBOTS_UNAVAILABLE",
       severity: "WARNING",
-      title: "robots.txt erişilemiyor",
-      description: "robots.txt başarılı yanıt vermedi.",
-      recommendation: "Kök dizinde erişilebilir bir robots.txt sunun.",
+      title: turkish("m178"),
+      description: turkish("m179"),
+      recommendation: turkish("m180"),
       affectedUrls: [robotsUrl],
       evidence: [{ url: robotsUrl }],
     });
@@ -230,9 +233,11 @@ async function saveSummary(crawlId: string, sitemapFound: boolean) {
 async function checkImages(crawlId: string) {
   await db.crawl.update({
     where: { id: crawlId },
-    data: { statusMessage: "Görseller kontrol ediliyor" },
+    data: { statusMessage: turkish("m181") },
   });
   const sources = new Set<string>();
+  const maxChecks=Number(process.env.MAX_IMAGE_CHECKS??300);
+  if (maxChecks<=0) return {};
   let cursor: string | undefined;
   while (true) {
     const rows = await db.page.findMany({
@@ -246,7 +251,8 @@ async function checkImages(crawlId: string) {
     cursor = rows.at(-1)!.id;
     for (const r of rows)
       for (const i of (Array.isArray(r.images) ? r.images : []) as Array<{ src?: string }>)
-        if (i.src) sources.add(i.src);
+        if (i.src && /^https?:\/\//i.test(i.src)) sources.add(i.src);
+    if (sources.size>=maxChecks) break;
   }
   return findBrokenImages(sources);
 }
@@ -259,39 +265,39 @@ async function analyzeCrossPageSignals(crawlId: string, partial: boolean) {
   > = {
     CANONICAL_UNREACHABLE: {
       severity: "CRITICAL",
-      title: "Canonical hedefi erişilebilir değil",
-      description: "Canonical hedefi taramada başarılı HTML yanıtı vermedi.",
-      recommendation: "Canonical adresini çalışan tercih edilen sayfaya yönlendirin.",
+      title: turkish("m182"),
+      description: turkish("m183"),
+      recommendation: turkish("m184"),
     },
     SITEMAP_CANONICAL_MISMATCH: {
       severity: "WARNING",
-      title: "Sitemap ve canonical tutarsız",
-      description: "Sitemap URL’sinin canonical adresi farklı.",
-      recommendation: "Sitemap’e yalnızca tercih edilen canonical URL’leri ekleyin.",
+      title: turkish("m185"),
+      description: turkish("m186"),
+      recommendation: turkish("m187"),
     },
     BROKEN_INTERNAL_LINK: {
       severity: "CRITICAL",
-      title: "Kırık site içi bağlantı",
-      description: "Bağlantı hata veren bir site içi hedefe gidiyor.",
-      recommendation: "Kaynak sayfadaki bağlantıyı çalışan hedefe güncelleyin.",
+      title: turkish("m188"),
+      description: turkish("m189"),
+      recommendation: turkish("m190"),
     },
     HREFLANG_RETURN_MISSING: {
       severity: "WARNING",
-      title: "Hreflang karşılıklı bağlantısı eksik",
-      description: "İncelenen hedef sayfada kaynağa dönen hreflang bağlantısı bulunamadı.",
-      recommendation: "Dil alternatiflerini geçerli URL’lerle karşılıklı bağlayın.",
+      title: turkish("m191"),
+      description: turkish("m192"),
+      recommendation: turkish("m193"),
     },
     SITEMAP_URL_UNCRAWLED: {
       severity: "WARNING",
-      title: "Sitemap URL’si taranamadı",
-      description: "Sitemap adresi başarılı biçimde işlenemedi.",
-      recommendation: "Adresin erişilebilir, robots.txt tarafından izinli ve site kapsamında olduğunu kontrol edin.",
+      title: turkish("m194"),
+      description: turkish("m195"),
+      recommendation: turkish("m196"),
     },
     POSSIBLE_ORPHAN: {
       severity: "WARNING",
-      title: "Olası yetim sayfa",
-      description: `Sitemap’te var ancak taranan site içi bağlantı grafiğinde referans yok.${partial ? " Tarama kısmi olduğu için bu kesin değildir." : ""}`,
-      recommendation: "Önemliyse bağlamsal bir iç bağlantı ekleyin; değilse sitemap gerekliliğini değerlendirin.",
+      title: turkish("m197"),
+      description: turkish("m198", [partial ? turkish("m199") : ""]),
+      recommendation: turkish("m200"),
     },
   };
   const add = async (code: string, url: string, evidence: unknown) => {
@@ -351,7 +357,14 @@ async function analyzeCrossPageSignals(crawlId: string, partial: boolean) {
         });
         const byUrl = new Map(targets.map((x) => [x.url, x]));
         for (const link of part) {
-          const target = byUrl.get(link.url);
+          let target = byUrl.get(link.url);
+          if (target?.responseKind === 'REDIRECT') {
+            const redirect = await db.page.findUnique({where:{crawlId_url:{crawlId,url:link.url}},select:{redirectChain:true,error:true}});
+            const chain=Array.isArray(redirect?.redirectChain)?redirect.redirectChain:[];
+            const end=chain.at(-1);
+            if (redirect?.error) target={...target,responseKind:'ERROR'};
+            else if (typeof end==='string') target=await db.page.findUnique({where:{crawlId_url:{crawlId,url:end}},select:{url:true,statusCode:true,responseKind:true}})??undefined;
+          }
           if (target && (target.responseKind === "ERROR" || (target.statusCode ?? 0) >= 400))
             await add("BROKEN_INTERNAL_LINK", page.url, { hedef: link.url, baglantiMetni: link.text, hedefDurumu: target.statusCode });
         }
@@ -370,6 +383,7 @@ async function analyzeCrossPageSignals(crawlId: string, partial: boolean) {
       }
     }
   }
+  const crawl=await db.crawl.findUniqueOrThrow({where:{id:crawlId},select:{rootUrl:true}});
   let sitemapCursor: string | undefined;
   while (true) {
     const rows = await db.crawlUrl.findMany({
@@ -386,9 +400,23 @@ async function analyzeCrossPageSignals(crawlId: string, partial: boolean) {
       if (row.status === "SKIPPED") continue;
       if (row.status !== "PROCESSED")
         await add("SITEMAP_URL_UNCRAWLED", row.normalized, { durum: row.status });
-      else if (!row.linked)
-        await add("POSSIBLE_ORPHAN", row.normalized, { not: "Kesin Google dizin bilgisi değildir" });
+      else if (!row.linked && row.normalized!==crawl.rootUrl)
+        await add("POSSIBLE_ORPHAN", row.normalized, { not: turkish("m201") });
     }
   }
   for (const code of pending.keys()) await flush(code);
+}
+
+/** Redirects are crawled independently; reconstruct chains from recorded responses. */
+async function buildRedirectChains(crawlId:string) {
+  const redirects=await db.page.findMany({where:{crawlId,responseKind:'REDIRECT'},select:{url:true,redirectTarget:true}});
+  const byUrl=new Map(redirects.map(p=>[p.url,p.redirectTarget]));
+  for (const page of redirects) {
+    const chain=[page.url]; let next=page.redirectTarget,loop=false;
+    while(next && chain.length<=100) {
+      if(chain.includes(next)) {chain.push(next);loop=true;break;}
+      chain.push(next);next=byUrl.get(next)??null;
+    }
+    await db.page.update({where:{crawlId_url:{crawlId,url:page.url}},data:{redirectChain:chain,error:loop?turkish('m218'):null}});
+  }
 }

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { crawlTrapReason, errorStatus, normalizeCrawlUrl } from "./crawl.js";
+import { crawlTrapReason, errorStatus, normalizeCrawlUrl, robotsAllows } from "./crawl.js";
 describe("hata durum kodu", () => {
   it("farklı hata mesajlarından durum kodunu çıkarır", () => {
     expect(errorStatus("HTTP 404")).toBe(404);
@@ -24,3 +24,16 @@ describe("büyük site URL denetimleri", () => {
     ).toMatch(/Döngüsel/);
   });
 });
+
+describe('robots regression',()=>{
+ it('honors consecutive user agents',()=>expect(robotsAllows('User-agent: *\nUser-agent: OtherBot\nDisallow: /private','/private')).toBe(false));
+ it('uses specific bot groups over wildcard groups',()=>expect(robotsAllows('User-agent: *\nDisallow: /\nUser-agent: SEO-Denetim\nAllow: /','/public')).toBe(true));
+ it('honors wildcard, end anchors, query paths and longest allow match',()=>{
+  const robots='User-agent: *\nDisallow: /*?secret=*$\nDisallow: /private\nAllow: /private/public';
+  expect(robotsAllows(robots,'/a?secret=1')).toBe(false);
+  expect(robotsAllows(robots,'/a')).toBe(true);
+  expect(robotsAllows(robots,'/private/public')).toBe(true);
+ });
+});
+
+it('does not exclude normal numeric product identifiers',()=>expect(crawlTrapReason('https://example.test/product?id=123456789',1)).toBeNull());

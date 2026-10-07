@@ -1,3 +1,4 @@
+import type {PageInput} from './types.js';
 import { describe, expect, it } from 'vitest';
 import { RULE_CATALOG, runRules, scoreFindings } from './index.js';
 describe('SEO puanı', () => {
@@ -64,5 +65,29 @@ describe('ek SEO kuralları', () => {
     expect(codes({}, { sitemapFound: false })).toContain('SITEMAP_MISSING');
     const f = runRules({ ...context([{ ...base, images: [{ src: 'https://x.test/a.png', alt: 'a', decorative: false }, { src: 'https://x.test/b.png', alt: 'b', decorative: false }] }]), brokenImages: { 'https://x.test/a.png': 404 } }).find(x => x.code === 'BROKEN_IMAGE');
     expect(f?.evidence).toEqual([{ url: 'https://x.test/', gorsel: 'https://x.test/a.png', durum: 404 }]);
+  });
+});
+
+describe('cross-page regressions',()=>{
+  const context=(pages:PageInput[])=>({pages,sitemapUrls:[],robotsAccessible:true,robotsUrl:'https://example.test/robots.txt',crawlLimited:false});
+  it('does not flag hreflang targets outside the crawled graph',()=>{
+    const findings=runRules(context([{url:'https://example.test/',statusCode:200,title:'Home',canonical:'https://example.test/',hreflangs:[{lang:'en',url:'https://other.test/'}]}]));
+    expect(findings.some(f=>f.code==='HREFLANG_RETURN_MISSING')).toBe(false);
+  });
+  it('flags a missing return only on an inspected successful HTML target',()=>{
+    const pages=[{url:'https://example.test/tr',statusCode:200,hreflangs:[{lang:'en',url:'https://example.test/en'}]},{url:'https://example.test/en',statusCode:200,hreflangs:[]}];
+    expect(runRules(context(pages)).find(f=>f.code==='HREFLANG_RETURN_MISSING')?.affectedUrls).toEqual(['https://example.test/tr']);
+    pages[1].hreflangs=[{lang:'tr',url:pages[0].url}];
+    expect(runRules(context(pages)).some(f=>f.code==='HREFLANG_RETURN_MISSING')).toBe(false);
+  });
+  it('applies content checks to successful 2xx HTML and excludes non-HTML duplicates',()=>{
+    const pages:PageInput[]=[{url:'https://example.test/a',statusCode:201,title:'',canonical:'https://example.test/a'},{url:'https://example.test/file',statusCode:200,responseKind:'NON_HTML',title:'same'},{url:'https://example.test/b',statusCode:200,title:'same'}];
+    const findings=runRules(context(pages));
+    expect(findings.find(f=>f.code==='TITLE_MISSING')?.affectedUrls).toEqual([pages[0].url]);
+    expect(findings.some(f=>f.code==='DUPLICATE_TITLE')).toBe(false);
+  });
+  it('keeps canonical checks consistent for successful 2xx targets',()=>{
+    const findings=runRules(context([{url:'https://example.test/a',statusCode:200,canonical:'https://example.test/b'},{url:'https://example.test/b',statusCode:201,canonical:'https://example.test/b'}]));
+    expect(findings.some(f=>f.code==='CANONICAL_UNREACHABLE')).toBe(false);
   });
 });

@@ -1,3 +1,4 @@
+import {translator,numberLocale,turkish} from '@seo/shared/i18n';
 import {
   AlignmentType,
   BorderStyle,
@@ -47,17 +48,18 @@ const link = (url: string) =>
     spacing: { after: 50 },
   });
 export async function createDocxReport(data: ReportData) {
+  const locale=data.locale,translate=translator(locale);
   const children: (Paragraph | Table)[] = [];
   children.push(
     new Paragraph({
-      text: `${data.crawl.host} SEO Analiz Raporu`,
+      text: translate("m332", [data.crawl.host]),
       heading: HeadingLevel.TITLE,
       spacing: { after: 180 },
     }),
     new Paragraph({
       children: [
         text(
-          `Tarama tarihi: ${new Intl.DateTimeFormat("tr-TR", { dateStyle: "long", timeStyle: "short" }).format(data.crawl.completedAt ?? data.crawl.createdAt)}`,
+          translate("m333", [new Intl.DateTimeFormat(numberLocale(locale), { dateStyle: "long", timeStyle: "short" }).format(data.crawl.completedAt ?? data.crawl.createdAt)]),
           false,
           "64748B",
           18,
@@ -65,15 +67,15 @@ export async function createDocxReport(data: ReportData) {
       ],
       spacing: { after: 300 },
     }),
-    new Paragraph({ text: "Yönetici özeti", heading: HeadingLevel.HEADING_1 }),
+    new Paragraph({ text: translate("m058"), heading: HeadingLevel.HEADING_1 }),
   );
   if (data.score !== null)
     children.push(
       new Paragraph({
         children: [
-          text(`SEO puanı: ${data.score}/100 `, true, brand, 30),
+          text(translate("m059", [data.score]), true, brand, 30),
           text(
-            `(${scoreLabel(data.score)})${data.previousScore !== null ? ` • önceki tarama: ${data.previousScore}` : ""}`,
+            `(${scoreLabel(data.score,locale)})${data.previousScore !== null ? translate("m060", [data.previousScore]) : ""}`,
             false,
             "64748B",
             20,
@@ -85,18 +87,18 @@ export async function createDocxReport(data: ReportData) {
   if (data.crawl.skipped > 0)
     children.push(
       p(
-        `Örneklemeli tarama: tekrar eden URL şablonlarından örnek analiz edildi. ${data.crawl.skipped.toLocaleString("tr-TR")} URL keşfedildi, analiz edilmedi. Bulgular ve puan örneklere dayanır; her URL için tam tarama yapılabilir.`,
+        translate("m061", [data.crawl.skipped.toLocaleString(numberLocale(locale))]),
       ),
     );
   const metrics = [
-    ["İşlenen URL", data.crawl.processed],
-    ["Analiz edilen HTML", data.crawl.html],
-    ["Yönlendirme", data.crawl.redirects],
-    ["Bekleyen URL", data.crawl.pending],
-    ["Hatalı URL", data.crawl.errors],
-    ["Kritik", data.counts.critical],
-    ["İyileştirilmeli", data.counts.warning],
-    ["Bilgi", data.counts.info],
+    [translate("m062"), data.crawl.processed],
+    [translate("m325"), data.crawl.html],
+    [translate("m024"), data.crawl.redirects],
+    [translate("m341"), data.crawl.pending],
+    [translate("m063"), data.crawl.errors],
+    [translate("m035"), data.counts.critical],
+    [translate("m036"), data.counts.warning],
+    [translate("m037"), data.counts.info],
   ];
   children.push(
     new Table({
@@ -155,7 +157,7 @@ export async function createDocxReport(data: ReportData) {
   );
   children.push(
     new Paragraph({
-      text: "Öncelikli bulgular",
+      text: translate("m064"),
       heading: HeadingLevel.HEADING_1,
       pageBreakBefore: true,
     }),
@@ -166,10 +168,10 @@ export async function createDocxReport(data: ReportData) {
   )) {
     const label =
       f.severity === "CRITICAL"
-        ? "Kritik"
+        ? translate("m035")
         : f.severity === "WARNING"
-          ? "İyileştirilmeli"
-          : "Bilgi";
+          ? translate("m036")
+          : translate("m037");
     children.push(
       new Paragraph({
         text: f.title,
@@ -179,7 +181,7 @@ export async function createDocxReport(data: ReportData) {
       new Paragraph({
         children: [
           text(
-            `${label} • ${f.code} • ${f.urls.length.toLocaleString("tr-TR")} etkilenen URL`,
+            translate("m337", [label, f.code, f.urls.length.toLocaleString(numberLocale(locale))]),
             true,
             f.severity === "CRITICAL"
               ? "DC2626"
@@ -192,14 +194,14 @@ export async function createDocxReport(data: ReportData) {
       }),
       p(f.description),
       new Paragraph({
-        children: [text("Düzeltme: ", true, blue), text(f.recommendation)],
+        children: [text(translate("m065"), true, blue), text(f.recommendation)],
       }),
     );
     if (f.evidence[0])
       children.push(
         new Paragraph({
           children: [
-            text("Kanıt: ", true),
+            text(translate("m066"), true),
             text(f.evidence[0], false, "64748B", 16),
           ],
         }),
@@ -207,7 +209,7 @@ export async function createDocxReport(data: ReportData) {
     if (f.templateHits.length) {
       children.push(
         new Paragraph({
-          children: [text("URL şablonları", true, brand)],
+          children: [text(translate("m042"), true, brand)],
           keepNext: true,
         }),
       );
@@ -217,7 +219,7 @@ export async function createDocxReport(data: ReportData) {
             children: [
               text(h.pattern, true, brand, 18),
               text(
-                `  ${h.urls.length}/${h.sampleCount} örnekte görüldü • toplam ${h.discovered.toLocaleString("tr-TR")} URL keşfedildi, ${h.skipped.toLocaleString("tr-TR")} tanesi keşfedildi, analiz edilmedi`,
+                translate("m067", [h.urls.length, h.sampleCount, h.discovered.toLocaleString(numberLocale(locale)), h.skipped.toLocaleString(numberLocale(locale))]),
                 false,
                 "64748B",
                 16,
@@ -231,7 +233,7 @@ export async function createDocxReport(data: ReportData) {
         new Paragraph({
           children: [
             text(
-              f.templateHits.length ? "Şablon dışındaki URL’ler" : "Etkilenen URL’ler",
+              f.templateHits.length ? translate("m048") : "Etkilenen URL’ler",
               true,
               brand,
             ),
@@ -255,12 +257,12 @@ export async function createDocxReport(data: ReportData) {
   if (data.templates.length) {
     children.push(
       new Paragraph({
-        text: "URL grupları",
+        text: translate("m068"),
         heading: HeadingLevel.HEADING_1,
         pageBreakBefore: true,
       }),
       p(
-        "Siteye özgü olarak URL yapısından tespit edilen şablonlar. Örneklerin sayfa yapısı farklı çıkan gruplar örneklenmedi, tamamı analiz edildi.",
+        translate("m069"),
       ),
     );
     for (const t of data.templates) {
@@ -268,8 +270,8 @@ export async function createDocxReport(data: ReportData) {
         new Paragraph({ text: t.pattern, heading: HeadingLevel.HEADING_3, keepNext: true }),
         p(
           t.status === "MIXED"
-            ? `Farklı sayfa türleri bulundu, tamamı analiz edildi • ${t.discovered.toLocaleString("tr-TR")} URL keşfedildi, ${t.analyzed.toLocaleString("tr-TR")} analiz edildi`
-            : `${t.discovered.toLocaleString("tr-TR")} URL keşfedildi • ${t.analyzed} örnek analiz edildi • ${t.skipped.toLocaleString("tr-TR")} URL keşfedildi, analiz edilmedi`,
+            ? translate("m070", [t.discovered.toLocaleString(numberLocale(locale)), t.analyzed.toLocaleString(numberLocale(locale))])
+            : translate("m071", [t.discovered.toLocaleString(numberLocale(locale)), t.analyzed, t.skipped.toLocaleString(numberLocale(locale))]),
         ),
       );
       if (t.status !== "MIXED") children.push(p(templateFindings(data, t.pattern, t.samples.length)));
@@ -277,7 +279,7 @@ export async function createDocxReport(data: ReportData) {
   }
   children.push(
     new Paragraph({
-      text: "Kontrol edildi, sorun yok",
+      text: translate("m344"),
       heading: HeadingLevel.HEADING_1,
       pageBreakBefore: true,
     }),
@@ -285,7 +287,7 @@ export async function createDocxReport(data: ReportData) {
   if (data.passed) {
     children.push(
       p(
-        `Uygulanan ${data.passed.length + data.findings.length} kontrolden ${data.passed.length} tanesi sorun bulmadı.`,
+        translate("m072", [data.passed.length + data.findings.length, data.passed.length]),
       ),
     );
     for (const r of data.passed)
@@ -297,17 +299,17 @@ export async function createDocxReport(data: ReportData) {
   } else
     children.push(
       p(
-        "Bu tarama, kontrol listesi tutulmadan önceki bir sürümle yapıldı. Listeyi görmek için siteyi yeniden tarayın.",
+        translate("m073"),
       ),
     );
   children.push(
     new Paragraph({
-      text: "Tarama kapsamı",
+      text: translate("m074"),
       heading: HeadingLevel.HEADING_1,
       pageBreakBefore: true,
     }),
     p(
-      `Tarama durumu: ${data.crawl.status === "COMPLETED" ? "Tamamlandı" : "Kısmi veya devam ediyor"}${data.crawl.partialReason ? ` - ${data.crawl.partialReason}` : ""}. Keşfedilen ${data.crawl.discovered} URL’nin ${data.crawl.processed} adedi işlendi. ${data.crawl.html} başarılı HTML sayfası içerik kurallarına dahil edildi. ${data.crawl.redirects} yönlendirme içerik sayfası olarak analiz edilmedi.`,
+      translate("m075", [data.crawl.status === "COMPLETED" ? translate("m076") : translate("m077"), data.crawl.partialReason ? ` - ${data.crawl.partialReason}` : "", data.crawl.discovered, data.crawl.processed, data.crawl.html, data.crawl.redirects]),
     ),
   );
   for (const item of data.excluded) {
@@ -319,11 +321,11 @@ export async function createDocxReport(data: ReportData) {
     );
   }
   children.push(
-    new Paragraph({ text: "Karşılaştırma", heading: HeadingLevel.HEADING_1 }),
+    new Paragraph({ text: translate("m078"), heading: HeadingLevel.HEADING_1 }),
     p(
       data.comparison.hasPrevious
-        ? `Önceki taramaya göre ${data.comparison.new} yeni, ${data.comparison.ongoing} devam eden ve ${data.comparison.resolved} çözülen bulgu vardır.`
-        : "Karşılaştırılabilecek önceki tamamlanmış tarama bulunmuyor.",
+        ? translate("m079", [data.comparison.new, data.comparison.ongoing, data.comparison.resolved])
+        : translate("m080"),
     ),
   );
   const doc = new Document({
@@ -372,7 +374,7 @@ export async function createDocxReport(data: ReportData) {
               new Paragraph({
                 alignment: AlignmentType.CENTER,
                 children: [
-                  text(`${data.crawl.host} • Sayfa `, false, "64748B", 16),
+                  text(translate("m336", [data.crawl.host]), false, "64748B", 16),
                   new TextRun({
                     children: [PageNumber.CURRENT],
                     size: 16,

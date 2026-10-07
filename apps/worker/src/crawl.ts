@@ -1,9 +1,10 @@
+import { turkish } from '@seo/shared/i18n';
 import type { CheerioRoot } from "crawlee";
 import { CheerioCrawler, RequestQueue } from "crawlee";
 import { createHash } from "node:crypto";
 import { XMLParser } from "fast-xml-parser";
 import { db } from "@seo/db";
-import { assertSafeUrl, isSameSite, normalizeUrl } from "@seo/shared";
+import { assertSafeUrl, isSameSite, normalizeUrl, safeLookup } from "@seo/shared";
 import { limitedText, safeFetch } from "./fetch-safe.js";
 import { analyzeStoredPages } from "./analysis.js";
 import { TemplateSampler } from "./sampler.js";
@@ -31,19 +32,19 @@ export function crawlTrapReason(input: string, depth: number) {
     keys = [...u.searchParams.keys()],
     values = [...u.searchParams.values()],
     segments = u.pathname.split("/").filter(Boolean);
-  if (depth > maxDepth) return "Maksimum bağlantı derinliği aşıldı";
-  if (keys.length > 12) return "Aşırı sorgu parametresi üretimi";
-  if (values.some((v) => /^\d{6,}$/.test(v)))
-    return "Sınırsız sayaç veya sayfalama adayı";
+  if (depth > maxDepth) return turkish("m202");
+  if (keys.length > 12) return turkish("m203");
+  if ([...u.searchParams].some(([key,value]) => /^(offset|page|start|skip)$/i.test(key) && /^\d{6,}$/.test(value)))
+    return turkish("m204");
   if (
     segments.length > 30 ||
     segments.some(
       (s, i) => i > 3 && segments.slice(0, i).filter((x) => x === s).length > 2,
     )
   )
-    return "Döngüsel URL yolu adayı";
+    return turkish("m205");
   if ((u.pathname.match(/\/20\d{2}\/\d{1,2}\/\d{1,2}/g) ?? []).length > 1)
-    return "Takvim tuzağı adayı";
+    return turkish("m206");
   return null;
 }
 /**
@@ -102,26 +103,29 @@ const absolute = (v: string | undefined, b: string) => {
     return undefined;
   }
 };
-function robotsAllows(text: string, path: string) {
-  let active = false;
-  const allow: string[] = [],
-    deny: string[] = [];
+export function robotsAllows(text:string,path:string) {
+  const groups:{agents:string[];rules:{allow:boolean;path:string}[]}[]=[];
+  let group={agents:[] as string[],rules:[] as {allow:boolean;path:string}[]};
   for (const raw of text.split(/\r?\n/)) {
-    const line = raw.split("#")[0].trim(),
-      [k, ...r] = line.split(":"),
-      v = r.join(":").trim();
-    if (k?.toLowerCase() === "user-agent")
-      active = v === "*" || v.toLowerCase() === "seo-denetim";
-    else if (active && k?.toLowerCase() === "allow") allow.push(v);
-    else if (active && k?.toLowerCase() === "disallow" && v) deny.push(v);
+    const line=raw.split('#')[0].trim(), colon=line.indexOf(':');
+    if (colon<0) continue;
+    const key=line.slice(0,colon).trim().toLowerCase(),value=line.slice(colon+1).trim();
+    if (key==='user-agent') {
+      if(group.rules.length){groups.push(group);group={agents:[],rules:[]};}
+      group.agents.push(value.toLowerCase());
+    } else if (group.agents.length && ['allow','disallow'].includes(key) && value) group.rules.push({allow:key==='allow',path:value});
   }
-  const a = allow
-      .filter((x) => path.startsWith(x))
-      .sort((x, y) => y.length - x.length)[0],
-    d = deny
-      .filter((x) => path.startsWith(x))
-      .sort((x, y) => y.length - x.length)[0];
-  return !d || (a?.length ?? 0) >= d.length;
+  groups.push(group);
+  const specific=groups.filter(g=>g.agents.includes('seo-denetim'));
+  const applicable=specific.length?specific:groups.filter(g=>g.agents.includes('*'));
+  let best:{allow:boolean;length:number}|undefined;
+  for(const rule of applicable.flatMap(g=>g.rules)) {
+    const end=rule.path.endsWith('$'),value=end?rule.path.slice(0,-1):rule.path;
+    const pattern='^'+value.split('*').map(v=>v.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')).join('.*')+(end?'$':'');
+    const length=value.replace(/\*/g,'').length;
+    if(new RegExp(pattern).test(path) && (!best || length>best.length || length===best.length && rule.allow)) best={allow:rule.allow,length};
+  }
+  return !best || best.allow;
 }
 async function sitemaps(root: URL, robots: string) {
   const declared = robots
@@ -200,7 +204,7 @@ async function discover(
       });
       continue;
     }
-    if (!robotsAllows(robots, new URL(normalized).pathname)) {
+    if (!robotsAllows(robots, new URL(normalized).pathname+new URL(normalized).search)) {
       await db.crawlUrl.upsert({
         where: { crawlId_normalized: { crawlId, normalized } },
         create: {
@@ -210,7 +214,7 @@ async function discover(
           depth: v.depth,
           sourceUrl: v.sourceUrl,
           status: "EXCLUDED",
-          lastError: "robots.txt tarafından engellendi",
+          lastError: turkish("m207"),
         },
         update: {},
       });
@@ -259,28 +263,30 @@ async function counts(crawlId: string) {
     where: { id: crawlId },
     data: {
       discoveredPages: d + ing + done + errors + excluded + skipped,
+      progress: Math.min(99,Math.floor((done+errors)/Math.max(1,d+ing+done+errors)*100)),
       skippedUrls: skipped,
       processedPages: done + errors,
       pendingUrls: d + ing,
       errorUrls: errors,
       analyzedHtmlPages: html,
       redirectCount: redirects,
-      statusMessage: `${done + errors} URL işlendi, ${d + ing} URL bekliyor${skipped ? `, ${skipped} URL şablon örneklemesiyle atlandı` : ""}`,
+      statusMessage: turkish("m208", [done + errors, d + ing, skipped ? turkish("m209", [skipped]) : ""]),
     },
   });
 }
-export async function executeCrawl(crawlId: string, rootInput: string) {
+export async function executeCrawl(crawlId: string, rootInput: string, recoverRunning=false) {
   const root = await assertSafeUrl(rootInput),
     started = Date.now(),
     robotsUrl = new URL("/robots.txt", root).toString();
   const claimed = await db.crawl.updateMany({
-    where: { id: crawlId, status: { in: ["QUEUED", "PARTIAL"] } },
+    where: { id: crawlId, status: { in: recoverRunning ? ["QUEUED", "PARTIAL", "RUNNING"] : ["QUEUED", "PARTIAL"] } },
     data: {
       status: "RUNNING",
       startedAt: new Date(),
       completedAt: null,
       partialReason: null,
-      statusMessage: "robots.txt ve sitemap inceleniyor",
+      statusMessage: turkish("m355"),
+      error: null,
     },
   });
   // Aynı tarama için eski ve yeni BullMQ işleri çakışırsa yalnızca biri ilerler.
@@ -330,13 +336,13 @@ export async function executeCrawl(crawlId: string, rootInput: string) {
     if (Date.now() - started > maxDurationMs) {
       await counts(crawlId);
       await analyzeStoredPages(crawlId, robotsOk, robotsUrl, true, sitemap.found);
-      await db.crawl.update({
-        where: { id: crawlId },
+      await db.crawl.updateMany({
+        where: { id: crawlId, status: "RUNNING" },
         data: {
           status: "PARTIAL",
-          partialReason: "Yapılandırılmış azami tarama süresine ulaşıldı",
+          partialReason: turkish("m210"),
           statusMessage:
-            "Kısmi tarama - bekleyen URL’ler daha sonra sürdürülebilir",
+            turkish("m211"),
         },
       });
       return;
@@ -359,6 +365,7 @@ export async function executeCrawl(crawlId: string, rootInput: string) {
     for (const item of batch)
       await queue.addRequest({
         url: item.normalized,
+        uniqueKey: item.normalized,
         userData: { crawlUrlId: item.id, depth: item.depth },
       });
     let last = 0;
@@ -369,7 +376,10 @@ export async function executeCrawl(crawlId: string, rootInput: string) {
       // Bağlantı kopması, zaman aşımı, 5xx ve 429 gibi geçici hatalar yeniden denenir;
       // kalıcı 4xx yanıtları requestHandler içinde noRetry ile hemen kaydedilir.
       maxRequestRetries: retries,
+      additionalMimeTypes: ['*/*'],
+      ignoreHttpErrorStatusCodes: Array.from({length:100},(_,i)=>400+i).filter(x=>![408,429].includes(x)),
       requestHandlerTimeoutSecs: 25,
+      navigationTimeoutSecs: Math.max(1,Number(process.env.REQUEST_TIMEOUT_MS??15000)/1000),
       preNavigationHooks: [
         async ({ request }, options) => {
           await assertSafeUrl(request.url);
@@ -383,8 +393,22 @@ export async function executeCrawl(crawlId: string, rootInput: string) {
           // HTTP/2'de sunucular eş zamanlı akışları REFUSED_STREAM ile reddedebiliyor;
           // HTTP/1.1 her istek için ayrı bağlantı kullandığından bu sorunu yaşamaz.
           options.http2 = false;
+          options.dnsLookup = safeLookup;
+          options.timeout = { request: Number(process.env.REQUEST_TIMEOUT_MS ?? 15000) };
         },
       ],
+      postNavigationHooks: [async ({ response }) => {
+        const max=Number(process.env.MAX_RESPONSE_BYTES??5242880);
+        if (Number(response.headers['content-length']??0)>max) {
+          response.destroy();
+          throw new Error(turkish('m220'));
+        }
+        let bytes=0;
+        response.on('data', chunk => {
+          bytes+=Buffer.byteLength(chunk);
+          if (bytes>max) response.destroy(new Error(turkish('m220')));
+        });
+      }],
       async requestHandler({ request, response, $ }) {
         const url = normalizeCrawlUrl(request.url),
           status = response?.statusCode ?? null,
@@ -393,7 +417,7 @@ export async function executeCrawl(crawlId: string, rootInput: string) {
           const location = String(response?.headers.location ?? ""),
             target = location ? absolute(location, url) : undefined;
           if (target) {
-            await assertSafeUrl(target);
+            try { await assertSafeUrl(target); } catch (error) { request.noRetry=true; throw error; }
             if (isSameSite(target, root.toString()))
               await discover(
                 crawlId,
@@ -448,7 +472,7 @@ export async function executeCrawl(crawlId: string, rootInput: string) {
         if (!status || status < 200 || status >= 300) {
           if (status && status >= 400 && status < 500 && ![408, 429].includes(status))
             request.noRetry = true;
-          throw new Error(`HTTP ${status ?? "yanıt yok"}`);
+          throw new Error(`HTTP ${status ?? turkish("m212")}`);
         }
         if (!type.includes("text/html") || !$) {
           await db.page.upsert({
@@ -566,7 +590,7 @@ export async function executeCrawl(crawlId: string, rootInput: string) {
                 return {
                   raw,
                   valid: false,
-                  error: err instanceof Error ? err.message : "Geçersiz JSON",
+                  error: err instanceof Error ? err.message : turkish("m213"),
                 };
               }
             })
@@ -578,6 +602,7 @@ export async function executeCrawl(crawlId: string, rootInput: string) {
           viewport:
             $('meta[name="viewport" i]').attr("content")?.trim() ?? "",
           socialTags: {
+            canonicalCount: $('link[rel="canonical" i]').length,
             ogTitle: $('meta[property="og:title" i]').attr("content") ?? null,
             ogDescription:
               $('meta[property="og:description" i]').attr("content") ?? null,
@@ -691,19 +716,22 @@ export async function executeCrawl(crawlId: string, rootInput: string) {
         });
       },
     });
-    await crawler.run();
+    try { await crawler.run(); }
+    finally { await queue.drop(); }
     await counts(crawlId);
   }
   await counts(crawlId);
+  const finalState = await db.crawl.findUniqueOrThrow({ where: { id: crawlId }, select: { status: true } });
+  if (finalState.status !== 'RUNNING') return;
   await analyzeStoredPages(crawlId, robotsOk, robotsUrl, false, sitemap.found);
-  await db.crawl.update({
-    where: { id: crawlId },
+  await db.crawl.updateMany({
+    where: { id: crawlId, status: "RUNNING" },
     data: {
       status: "COMPLETED",
       progress: 100,
       completedAt: new Date(),
       partialReason: null,
-      statusMessage: "SEO analizi tamamlandı",
+      statusMessage: turkish("m214"),
     },
   });
 }

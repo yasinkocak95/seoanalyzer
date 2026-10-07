@@ -1,5 +1,6 @@
-// PDFKit'in zincirli API türleri tuple metrik değerlerini gereğinden dar yorumluyor.
 // @ts-nocheck
+import {translator,numberLocale,turkish} from '@seo/shared/i18n';
+// PDFKit'in zincirli API türleri tuple metrik değerlerini gereğinden dar yorumluyor.
 import PDFDocument from "pdfkit";
 import fs from "node:fs";
 import { templateFindings, type ReportData } from "./report-data";
@@ -20,14 +21,15 @@ const font = () =>
     "C:/Windows/Fonts/arial.ttf",
   ].find(fs.existsSync);
 export async function createPdfReport(data: ReportData) {
+  const locale=data.locale,translate=translator(locale);
   return new Promise<Buffer>((resolve, reject) => {
     const doc = new PDFDocument({
         size: "A4",
         margins: { top: 54, bottom: 54, left: 50, right: 50 },
         bufferPages: true,
         info: {
-          Title: `${data.crawl.host} SEO Analiz Raporu`,
-          Author: "SEO Denetim",
+          Title: translate("m332", [data.crawl.host]),
+          Author: translate("m003"),
         },
       }),
       chunks: Buffer[] = [];
@@ -50,22 +52,22 @@ export async function createPdfReport(data: ReportData) {
     };
     const body = (text: string) =>
       doc.fillColor(C.body).fontSize(9.5).text(text, { lineGap: 3 });
-    doc.fillColor(C.blue).fontSize(10).text("SEO DENETİM");
+    doc.fillColor(C.blue).fontSize(10).text(translate("m086"));
     doc
       .moveDown(0.5)
       .fillColor(C.brand)
       .fontSize(25)
-      .text(`${data.crawl.host} SEO Analiz Raporu`, { width: 480 });
+      .text(translate("m332", [data.crawl.host]), { width: 480 });
     doc
       .moveDown(0.4)
       .fillColor(C.muted)
       .fontSize(9)
       .text(
-        `Tarama tarihi: ${new Intl.DateTimeFormat("tr-TR", { dateStyle: "long", timeStyle: "short" }).format(data.crawl.completedAt ?? data.crawl.createdAt)}`,
+        translate("m333", [new Intl.DateTimeFormat(numberLocale(locale), { dateStyle: "long", timeStyle: "short" }).format(data.crawl.completedAt ?? data.crawl.createdAt)]),
       );
-    heading("Yönetici özeti");
+    heading(translate("m058"));
     body(
-      `Tarama durumu: ${data.crawl.status === "COMPLETED" ? "Tamamlandı" : "Kısmi veya devam ediyor"}${data.crawl.partialReason ? ` - ${data.crawl.partialReason}` : ""}`,
+      translate("m334", [data.crawl.status === "COMPLETED" ? translate("m076") : translate("m077"), data.crawl.partialReason ? ` - ${data.crawl.partialReason}` : ""]),
     );
     if (data.score !== null)
       doc
@@ -73,21 +75,21 @@ export async function createPdfReport(data: ReportData) {
         .fillColor(C.brand)
         .fontSize(13)
         .text(
-          `SEO puanı: ${data.score}/100 (${scoreLabel(data.score)})${data.previousScore !== null ? ` • önceki tarama: ${data.previousScore}` : ""}`,
+          translate("m087", [data.score, scoreLabel(data.score,locale), data.previousScore !== null ? translate("m060", [data.previousScore]) : ""]),
         );
     if (data.crawl.skipped > 0)
       body(
-        `Örneklemeli tarama: tekrar eden URL şablonlarından örnek analiz edildi. ${data.crawl.skipped.toLocaleString("tr-TR")} URL keşfedildi, analiz edilmedi. Bulgular ve puan örneklere dayanır; her URL için tam tarama yapılabilir.`,
+        translate("m061", [data.crawl.skipped.toLocaleString(numberLocale(locale))]),
       );
     const metrics = [
-      ["İşlenen URL", data.crawl.processed],
-      ["Analiz edilen HTML", data.crawl.html],
-      ["Yönlendirme", data.crawl.redirects],
-      ["Bekleyen URL", data.crawl.pending],
-      ["Hatalı URL", data.crawl.errors],
-      ["Kritik bulgu", data.counts.critical],
-      ["İyileştirilmeli", data.counts.warning],
-      ["Bilgilendirme", data.counts.info],
+      [translate("m062"), data.crawl.processed],
+      [translate("m325"), data.crawl.html],
+      [translate("m024"), data.crawl.redirects],
+      [translate("m341"), data.crawl.pending],
+      [translate("m063"), data.crawl.errors],
+      [translate("m340"), data.counts.critical],
+      [translate("m036"), data.counts.warning],
+      [translate("m339"), data.counts.info],
     ];
     doc.moveDown(0.7);
     const metricsY = doc.y;
@@ -106,7 +108,7 @@ export async function createPdfReport(data: ReportData) {
     }
     doc.x = 50;
     doc.y = metricsY + 100;
-    heading("Öncelikli bulgular");
+    heading(translate("m064"));
     const order = { CRITICAL: 0, WARNING: 1, INFO: 2 };
     for (const finding of [...data.findings].sort(
       (a, b) => order[a.severity] - order[b.severity],
@@ -114,10 +116,10 @@ export async function createPdfReport(data: ReportData) {
       check(150);
       const label =
           finding.severity === "CRITICAL"
-            ? "Kritik"
+            ? translate("m035")
             : finding.severity === "WARNING"
-              ? "İyileştirilmeli"
-              : "Bilgi",
+              ? translate("m036")
+              : translate("m037"),
         color =
           finding.severity === "CRITICAL"
             ? C.red
@@ -130,7 +132,7 @@ export async function createPdfReport(data: ReportData) {
         .fillColor(C.muted)
         .fontSize(8)
         .text(
-          `${finding.code} • ${finding.urls.length.toLocaleString("tr-TR")} etkilenen URL`,
+          translate("m338", [finding.code, finding.urls.length.toLocaleString(numberLocale(locale))]),
         );
       doc.moveDown(0.25);
       body(finding.description);
@@ -138,16 +140,16 @@ export async function createPdfReport(data: ReportData) {
         .moveDown(0.25)
         .fillColor(C.blue)
         .fontSize(9)
-        .text(`Düzeltme: ${finding.recommendation}`, { lineGap: 2 });
+        .text(translate("m088", [finding.recommendation]), { lineGap: 2 });
       if (finding.evidence.length) {
         doc
           .moveDown(0.3)
           .fillColor(C.muted)
           .fontSize(8)
-          .text(`Kanıt: ${finding.evidence[0]}`, { lineGap: 2 });
+          .text(translate("m089", [finding.evidence[0]]), { lineGap: 2 });
       }
       if (finding.templateHits.length) {
-        doc.moveDown(0.35).fillColor(C.brand).fontSize(9).text("URL şablonları");
+        doc.moveDown(0.35).fillColor(C.brand).fontSize(9).text(translate("m042"));
         for (const h of finding.templateHits) {
           check(36);
           doc.fillColor(C.brand).fontSize(8.5).text(h.pattern, { width: 490 });
@@ -155,7 +157,7 @@ export async function createPdfReport(data: ReportData) {
             .fillColor(C.muted)
             .fontSize(7.5)
             .text(
-              `${h.urls.length}/${h.sampleCount} örnekte görüldü • toplam ${h.discovered.toLocaleString("tr-TR")} URL keşfedildi, ${h.skipped.toLocaleString("tr-TR")} tanesi keşfedildi, analiz edilmedi`,
+              translate("m090", [h.urls.length, h.sampleCount, h.discovered.toLocaleString(numberLocale(locale)), h.skipped.toLocaleString(numberLocale(locale))]),
               { width: 490 },
             );
         }
@@ -167,7 +169,7 @@ export async function createPdfReport(data: ReportData) {
           .fontSize(9)
           .text(
             finding.templateHits.length
-              ? "Şablon dışındaki URL’ler"
+              ? translate("m048")
               : "Etkilenen URL’ler",
           );
         for (const group of finding.groups) {
@@ -191,9 +193,9 @@ export async function createPdfReport(data: ReportData) {
       doc.moveDown(0.8);
     }
     if (data.templates.length) {
-      heading("URL grupları");
+      heading(translate("m068"));
       body(
-        "Siteye özgü olarak URL yapısından tespit edilen şablonlar. Örneklerin sayfa yapısı farklı çıkan gruplar örneklenmedi, tamamı analiz edildi.",
+        translate("m069"),
       );
       for (const t of data.templates) {
         check(60);
@@ -207,18 +209,18 @@ export async function createPdfReport(data: ReportData) {
           .fontSize(8)
           .text(
             t.status === "MIXED"
-              ? `Farklı sayfa türleri bulundu, tamamı analiz edildi • ${t.discovered.toLocaleString("tr-TR")} URL keşfedildi, ${t.analyzed.toLocaleString("tr-TR")} analiz edildi`
-              : `${t.discovered.toLocaleString("tr-TR")} URL keşfedildi • ${t.analyzed} örnek analiz edildi • ${t.skipped.toLocaleString("tr-TR")} URL keşfedildi, analiz edilmedi`,
+              ? translate("m070", [t.discovered.toLocaleString(numberLocale(locale)), t.analyzed.toLocaleString(numberLocale(locale))])
+              : translate("m071", [t.discovered.toLocaleString(numberLocale(locale)), t.analyzed, t.skipped.toLocaleString(numberLocale(locale))]),
             { width: 490 },
           );
         if (t.status === "MIXED") continue;
         body(templateFindings(data, t.pattern, t.samples.length));
       }
     }
-    heading("Kontrol edildi, sorun yok");
+    heading(translate("m344"));
     if (data.passed) {
       body(
-        `Uygulanan ${data.passed.length + data.findings.length} kontrolden ${data.passed.length} tanesi sorun bulmadı.`,
+        translate("m072", [data.passed.length + data.findings.length, data.passed.length]),
       );
       for (const rule of data.passed) {
         check(18);
@@ -229,11 +231,11 @@ export async function createPdfReport(data: ReportData) {
       }
     } else
       body(
-        "Bu tarama, kontrol listesi tutulmadan önceki bir sürümle yapıldı. Listeyi görmek için siteyi yeniden tarayın.",
+        translate("m073"),
       );
-    heading("Tarama kapsamı");
+    heading(translate("m074"));
     body(
-      `Keşfedilen ${data.crawl.discovered.toLocaleString("tr-TR")} URL’nin ${data.crawl.processed.toLocaleString("tr-TR")} adedi işlendi. ${data.crawl.html.toLocaleString("tr-TR")} başarılı HTML sayfası içerik kurallarına dahil edildi. ${data.crawl.redirects.toLocaleString("tr-TR")} yönlendirme içerik sayfası olarak analiz edilmedi.`,
+      translate("m091", [data.crawl.discovered.toLocaleString(numberLocale(locale)), data.crawl.processed.toLocaleString(numberLocale(locale)), data.crawl.html.toLocaleString(numberLocale(locale)), data.crawl.redirects.toLocaleString(numberLocale(locale))]),
     );
     for (const item of data.excluded) {
       check(28);
@@ -243,11 +245,11 @@ export async function createPdfReport(data: ReportData) {
         .text(item.url, { link: item.url, width: 490 });
       doc.fillColor(C.muted).fontSize(7).text(`${item.status}: ${item.reason}`);
     }
-    heading("Karşılaştırma");
+    heading(translate("m078"));
     body(
       data.comparison.hasPrevious
-        ? `Önceki taramaya göre ${data.comparison.new} yeni, ${data.comparison.ongoing} devam eden ve ${data.comparison.resolved} çözülen bulgu vardır.`
-        : "Karşılaştırılabilecek önceki tamamlanmış tarama bulunmuyor.",
+        ? translate("m079", [data.comparison.new, data.comparison.ongoing, data.comparison.resolved])
+        : translate("m080"),
     );
     const range = doc.bufferedPageRange();
     for (let i = 0; i < range.count; i++) {
@@ -260,7 +262,7 @@ export async function createPdfReport(data: ReportData) {
         .fillColor(C.muted)
         .fontSize(8)
         .text(
-          `${data.crawl.host} • Sayfa ${i + 1}/${range.count}`,
+          translate("m335", [data.crawl.host, i + 1, range.count]),
           50,
           doc.page.height - 40,
           { align: "center", width: 495, height: 12 },

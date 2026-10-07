@@ -1,0 +1,61 @@
+# Production defaults; automatically loaded by docker compose on this server.
+services:
+  postgres:
+    restart: unless-stopped
+    mem_limit: 512m
+    environment:
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+    ports: !reset []
+  redis:
+    restart: unless-stopped
+    mem_limit: 256m
+    ports: !reset []
+    command: ["redis-server", "--appendonly", "yes", "--maxmemory", "192mb", "--maxmemory-policy", "noeviction"]
+    volumes: ["redis_data:/data"]
+  migrate:
+    mem_limit: 512m
+    environment:
+      DATABASE_URL: ${DATABASE_URL:?DATABASE_URL is required}
+  web:
+    restart: unless-stopped
+    mem_limit: 512m
+    cpus: 1.0
+    environment:
+      DATABASE_URL: ${DATABASE_URL:?DATABASE_URL is required}
+      REDIS_URL: ${REDIS_URL:?REDIS_URL is required}
+      NEXT_PUBLIC_APP_URL: ${NEXT_PUBLIC_APP_URL:?NEXT_PUBLIC_APP_URL is required}
+      CACHE_TTL_SECONDS: ${CACHE_TTL_SECONDS:-1800}
+      EXPORT_SIGNING_SECRET: ${EXPORT_SIGNING_SECRET:?EXPORT_SIGNING_SECRET is required}
+    ports: !override ["127.0.0.1:3000:3000"]
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      start_period: 30s
+      retries: 3
+  worker:
+    restart: unless-stopped
+    mem_limit: 1g
+    cpus: 1.0
+    environment:
+      DATABASE_URL: ${DATABASE_URL:?DATABASE_URL is required}
+      REDIS_URL: ${REDIS_URL:?REDIS_URL is required}
+      MAX_DEPTH: ${MAX_DEPTH:-6}
+      CRAWL_BATCH_SIZE: ${CRAWL_BATCH_SIZE:-25}
+      MAX_CRAWL_DURATION_SECONDS: ${MAX_CRAWL_DURATION_SECONDS:-21600}
+      REQUEST_DELAY_MS: ${REQUEST_DELAY_MS:-500}
+      REQUEST_TIMEOUT_MS: ${REQUEST_TIMEOUT_MS:-15000}
+      MAX_RESPONSE_BYTES: ${MAX_RESPONSE_BYTES:-5242880}
+      CRAWL_CONCURRENCY: ${CRAWL_CONCURRENCY:-2}
+      CRAWL_MAX_RETRIES: ${CRAWL_MAX_RETRIES:-2}
+      MAX_IMAGE_CHECKS: ${MAX_IMAGE_CHECKS:-300}
+      MAX_SITEMAP_FILES: ${MAX_SITEMAP_FILES:-50}
+      TEMPLATE_MIN_URLS: ${TEMPLATE_MIN_URLS:-8}
+      TEMPLATE_SAMPLE_SIZE: ${TEMPLATE_SAMPLE_SIZE:-5}
+      TEMPLATE_SIMILARITY: ${TEMPLATE_SIMILARITY:-0.5}
+      ALLOW_LOCAL_TEST_URLS: "false"
+      ENABLE_PLAYWRIGHT: "false"
+      NODE_OPTIONS: "--max-old-space-size=640"
+      CRAWLEE_MEMORY_MBYTES: "768"
+volumes:
+  redis_data:

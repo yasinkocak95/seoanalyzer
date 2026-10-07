@@ -1,3 +1,5 @@
+import { getLocale } from '@/lib/locale';
+import { translator,turkish,localeOf,localizeFinding,localizeEvidence } from '@seo/shared/i18n';
 import { NextResponse } from "next/server";
 import { db } from "@seo/db";
 import { groupFindings, severityLabel } from "@/lib/findings";
@@ -9,7 +11,7 @@ export const runtime = "nodejs";
 // olarak çalışmasın diye başına tek tırnak eklenir.
 const cell = (value: unknown) => {
   let s = String(value ?? "").replace(/\r?\n/g, " ");
-  if (/^[=+\-@\t]/.test(s)) s = `'${s}`;
+  if (/^[\s\u0000-\u001f]*[=+\-@]|^[\t\r]/.test(s)) s = `'${s}`;
   return `"${s.replace(/"/g, '""')}"`;
 };
 const details = (e: Record<string, unknown>, hide: string[]) =>
@@ -22,27 +24,28 @@ export async function GET(
   request: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
+  const locale=localeOf(new URL(request.url).searchParams.get('lang')??await getLocale()),t=translator(locale);
   const { id } = await params,
     token = new URL(request.url).searchParams.get("token");
   if (!verifyExport(id, token))
-    return NextResponse.json({ error: "Rapor erişim anahtarı geçersiz." }, { status: 403 });
+    return NextResponse.json({ error: t("m161") }, { status: 403 });
   const crawl = await db.crawl.findUnique({
     where: { id },
     include: { findings: true },
   });
-  if (!crawl) return NextResponse.json({ error: "Rapor bulunamadı." }, { status: 404 });
+  if (!crawl) return NextResponse.json({ error: t("m092") }, { status: 404 });
   const rows = [
-    ["Önem", "Kural kodu", "Bulgu", "URL", "URL şablonu", "Paylaşılan değer", "Ayrıntı", "Nasıl düzeltilir"],
+    [t("m162"), t("m163"), t("m164"), t("m039"), t("m165"), t("m166"), t("m167"), t("m168")],
   ];
   // Örnek URL satırlarına şablonu eklenir; şablonun kalan URL'leri analiz edilmediği için satırı yoktur.
   const templateOf = new Map<string, string>();
   for (const t of await getTemplates(id))
     if (t.status !== "MIXED") for (const u of t.samples) templateOf.set(u, t.pattern);
-  for (const f of groupFindings(crawl.findings))
+  for (const f of groupFindings(crawl.findings.map(f=>localizeFinding(f,locale))))
     for (const g of f.groups)
       for (const e of g.evidence)
         rows.push([
-          severityLabel[f.severity],
+          t(severityLabel[f.severity]),
           f.code,
           f.title,
           String(e.url ?? ""),

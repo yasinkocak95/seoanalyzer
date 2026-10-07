@@ -1,1 +1,2 @@
 export * from './url-security.js'; export const CRAWL_QUEUE = 'seo-crawls'; export type CrawlJob = { crawlId: string; rootUrl: string };
+export * from './i18n/index.js';

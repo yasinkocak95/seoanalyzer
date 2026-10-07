@@ -1,3 +1,4 @@
+import { turkish } from '@seo/shared/i18n';
 import type { Finding, PageInput, SiteContext } from "./types.js";
 export * from "./types.js";
 const TITLE_MIN = 30,
@@ -10,167 +11,167 @@ const words = (s: string | null | undefined) =>
   s?.split(/\s+/).filter(Boolean).length ?? 0;
 // responseKind verilmemişse eski çağrılarla uyum için HTML kabul edilir.
 const okHtml = (x: PageInput) =>
-  x.statusCode === 200 && (x.responseKind ?? "HTML") === "HTML";
+  !!x.statusCode && x.statusCode >= 200 && x.statusCode < 300 && (x.responseKind ?? "HTML") === "HTML";
 const catalog: Record<string, [string, string, string]> = {
   HTTP_ERROR: [
-    "Hata veren sayfa",
-    "Başarılı olmayan HTTP yanıtı içeriğe erişimi engelleyebilir.",
-    "Sayfayı geri yükleyin veya ilgili bağlantıları çalışan hedefe güncelleyin.",
+    turkish("m356"),
+    turkish("m231"),
+    turkish("m232"),
   ],
   REDIRECT_CHAIN: [
-    "Yönlendirme zinciri",
-    "Adres birden fazla yönlendirmeden geçiyor.",
-    "Bağlantıları ve sitemap adresini doğrudan son hedefe güncelleyin.",
+    turkish("m233"),
+    turkish("m234"),
+    turkish("m235"),
   ],
   ROBOTS_UNAVAILABLE: [
-    "robots.txt erişilemiyor",
-    "robots.txt başarılı yanıt vermedi.",
-    "Kök dizinde erişilebilir bir robots.txt sunun.",
+    turkish("m178"),
+    turkish("m179"),
+    turkish("m180"),
   ],
   NOINDEX: [
-    "Dizine eklememe sinyali",
-    "Meta robots veya X-Robots-Tag içinde noindex bulundu.",
-    "Sayfanın görünmesi amaçlanıyorsa noindex yönergesini kaldırın.",
+    turkish("m357"),
+    turkish("m236"),
+    turkish("m237"),
   ],
   NOFOLLOW: [
-    "Bağlantıları takip etmeme sinyali",
-    "nofollow yönergesi bulundu.",
-    "Site içi keşif amaçlanıyorsa nofollow yönergesini gözden geçirin.",
+    turkish("m238"),
+    turkish("m239"),
+    turkish("m240"),
   ],
   TITLE_MISSING: [
-    "Eksik veya boş sayfa başlığı",
-    "Dolu bir title değeri yok.",
-    "Sayfayı tanımlayan benzersiz bir title yazın.",
+    turkish("m241"),
+    turkish("m242"),
+    turkish("m243"),
   ],
   DESCRIPTION_MISSING: [
-    "Eksik veya boş meta açıklama",
-    "Dolu meta description bulunamadı.",
-    "İçeriği özetleyen özgün bir meta açıklama ekleyin.",
+    turkish("m244"),
+    turkish("m245"),
+    turkish("m246"),
   ],
   H1_MISSING: [
-    "H1 başlığı eksik",
-    "Ana konuyu belirten H1 bulunamadı.",
-    "Görünür içerikte açıklayıcı bir H1 kullanın.",
+    turkish("m247"),
+    turkish("m248"),
+    turkish("m249"),
   ],
   MULTIPLE_H1: [
-    "Birden fazla H1 kullanımı",
-    "Bu tek başına kritik hata değildir; yapı gözden geçirilmelidir.",
-    "Başlık hiyerarşisinin anlaşılır olduğunu doğrulayın.",
+    turkish("m250"),
+    turkish("m251"),
+    turkish("m252"),
   ],
   HEADING_ORDER: [
-    "Başlık hiyerarşisinde atlama",
-    "Başlık seviyelerinde basamak atlanmış.",
-    "Örneğin H2’den doğrudan H4’e geçmeyin.",
+    turkish("m253"),
+    turkish("m254"),
+    turkish("m255"),
   ],
   CANONICAL_MISSING: [
-    "Canonical etiketi eksik",
-    "Tercih edilen adres belirtilmemiş.",
-    "Mutlak tercih edilen URL’yi gösteren canonical ekleyin.",
+    turkish("m358"),
+    turkish("m256"),
+    turkish("m257"),
   ],
   CANONICAL_MULTIPLE: [
-    "Çelişkili canonical sinyali",
-    "Birden fazla canonical etiketi bulundu.",
-    "Tek bir tutarlı canonical etiketi bırakın.",
+    turkish("m258"),
+    turkish("m359"),
+    turkish("m259"),
   ],
   CANONICAL_UNREACHABLE: [
-    "Canonical hedefi erişilebilir değil",
-    "Canonical hedefi başarılı yanıt vermedi.",
-    "Canonical adresini çalışan tercih edilen sayfaya yönlendirin.",
+    turkish("m182"),
+    turkish("m260"),
+    turkish("m184"),
   ],
   SITEMAP_CANONICAL_MISMATCH: [
-    "Sitemap ve canonical tutarsız",
-    "Sitemap URL’sinin canonical adresi farklı.",
-    "Sitemap’e yalnızca tercih edilen canonical URL’leri ekleyin.",
+    turkish("m185"),
+    turkish("m186"),
+    turkish("m187"),
   ],
   BROKEN_INTERNAL_LINK: [
-    "Kırık site içi bağlantı",
-    "Bağlantı hata veren hedefe gidiyor.",
-    "Kaynak sayfadaki bağlantıyı çalışan hedefe güncelleyin.",
+    turkish("m188"),
+    turkish("m261"),
+    turkish("m190"),
   ],
   IMAGE_ALT: [
-    "Görsel alternatif metni eksik",
-    "Dekoratif olmayan görselde alt eksik veya boş.",
-    'Anlamlı alt metni ekleyin; dekoratif görsellerde alt="" kullanın.',
+    turkish("m262"),
+    turkish("m263"),
+    turkish("m264"),
   ],
   JSONLD_INVALID: [
-    "JSON-LD biçim hatası",
-    "JSON-LD geçerli JSON olarak ayrıştırılamadı.",
-    "JSON sözdizimini düzeltip yeniden doğrulayın.",
+    turkish("m265"),
+    turkish("m266"),
+    turkish("m267"),
   ],
   HREFLANG_RETURN_MISSING: [
-    "Hreflang karşılıklı bağlantısı eksik",
-    "Hedefte kaynağa dönen bağlantı bulunamadı.",
-    "Dil alternatiflerini geçerli URL’lerle karşılıklı bağlayın.",
+    turkish("m191"),
+    turkish("m268"),
+    turkish("m193"),
   ],
   TITLE_TOO_SHORT: [
-    "Sayfa başlığı çok kısa",
-    `Title ${TITLE_MIN} karakterden kısa; sayfayı yeterince tanımlamıyor olabilir.`,
-    "Sayfanın konusunu ve ayırt edici yönünü anlatan daha açıklayıcı bir title yazın.",
+    turkish("m269"),
+    turkish("m270", [TITLE_MIN]),
+    turkish("m271"),
   ],
   TITLE_TOO_LONG: [
-    "Sayfa başlığı çok uzun",
-    `Title ${TITLE_MAX} karakterden uzun; arama sonuçlarında kesilebilir.`,
-    "En önemli ifadeyi başa alıp title’ı kısaltın.",
+    turkish("m272"),
+    turkish("m273", [TITLE_MAX]),
+    turkish("m274"),
   ],
   DESCRIPTION_TOO_SHORT: [
-    "Meta açıklama çok kısa",
-    `Meta açıklama ${DESCRIPTION_MIN} karakterden kısa; arama sonucunda sayfayı yeterince özetlemiyor olabilir.`,
-    "İçeriği ve kullanıcıya faydasını anlatan daha dolu bir açıklama yazın.",
+    turkish("m275"),
+    turkish("m276", [DESCRIPTION_MIN]),
+    turkish("m277"),
   ],
   DESCRIPTION_TOO_LONG: [
-    "Meta açıklama çok uzun",
-    `Meta açıklama ${DESCRIPTION_MAX} karakterden uzun; arama sonuçlarında kesilebilir.`,
-    "Asıl mesajı ilk cümlede verip açıklamayı kısaltın.",
+    turkish("m278"),
+    turkish("m279", [DESCRIPTION_MAX]),
+    turkish("m280"),
   ],
   THIN_CONTENT: [
-    "Zayıf içerik",
-    `Sayfada ${THIN_WORDS} kelimeden az metin var. Menü ve alt bilgi metinleri de sayıma dahildir.`,
-    "Sayfaya kullanıcının sorusunu yanıtlayan özgün içerik ekleyin veya benzer sayfalarla birleştirin.",
+    turkish("m281"),
+    turkish("m282", [THIN_WORDS]),
+    turkish("m283"),
   ],
   MIXED_CONTENT: [
-    "HTTPS sayfada HTTP kaynak",
-    "Güvenli sayfa, şifrelenmemiş HTTP üzerinden kaynak yüklüyor. Tarayıcılar bu kaynakları engelleyebilir veya güvenlik uyarısı gösterebilir.",
-    "Kaynak adreslerini https:// ile değiştirin.",
+    turkish("m360"),
+    turkish("m284"),
+    turkish("m285"),
   ],
   LANG_MISSING: [
-    "Sayfa dili belirtilmemiş",
-    "<html> etiketinde lang özniteliği yok.",
-    'Sayfanın diline uygun lang değeri ekleyin, örneğin <html lang="tr">.',
+    turkish("m286"),
+    turkish("m287"),
+    turkish("m288"),
   ],
   VIEWPORT_MISSING: [
-    "Mobil görünüm etiketi eksik",
-    "meta viewport etiketi yok; sayfa mobil cihazlarda küçültülmüş masaüstü görünümüyle açılabilir.",
-    '<meta name="viewport" content="width=device-width, initial-scale=1"> ekleyin.',
+    turkish("m289"),
+    turkish("m290"),
+    turkish("m363"),
   ],
   OPEN_GRAPH_MISSING: [
-    "Open Graph etiketleri eksik",
-    "og:title, og:description veya og:image etiketlerinden en az biri yok. Sayfa sosyal medyada paylaşıldığında önizleme eksik görünebilir.",
-    "Eksik Open Graph etiketlerini sayfaya özel değerlerle ekleyin.",
+    turkish("m361"),
+    turkish("m291"),
+    turkish("m292"),
   ],
   TWITTER_CARD_MISSING: [
-    "Twitter/X kart etiketi eksik",
-    "twitter:card etiketi yok. X, başlık ve görsel için Open Graph’a dönebilir ancak kart türünü bu etiketle belirler.",
-    '<meta name="twitter:card" content="summary_large_image"> ekleyin.',
+    turkish("m362"),
+    turkish("m293"),
+    turkish("m364"),
   ],
   SITEMAP_MISSING: [
-    "Sitemap bulunamadı",
-    "robots.txt içinde belirtilen veya /sitemap.xml adresinde okunabilir bir sitemap bulunamadı.",
-    "Sitemap oluşturup kök dizinde sunun ve robots.txt içine Sitemap: satırı ekleyin.",
+    turkish("m294"),
+    turkish("m295"),
+    turkish("m296"),
   ],
   BROKEN_IMAGE: [
-    "Kırık görsel",
-    "Sayfadaki görsel hata veriyor veya yüklenemiyor.",
-    "Görseli geri yükleyin, adresini düzeltin veya sayfadan kaldırın.",
+    turkish("m297"),
+    turkish("m298"),
+    turkish("m299"),
   ],
 };
 /** Uygulanan tüm kurallar; "Kontrol edildi, sorun yok" listesi bundan üretilir. */
 export const RULE_CATALOG: { code: string; title: string }[] = [
   ...Object.entries(catalog).map(([code, [title]]) => ({ code, title })),
-  { code: "DUPLICATE_TITLE", title: "Tekrarlanan sayfa başlığı" },
-  { code: "DUPLICATE_DESCRIPTION", title: "Tekrarlanan meta açıklama" },
-  { code: "DUPLICATE_CONTENT", title: "Birebir aynı içerik adayı" },
-  { code: "SITEMAP_URL_UNCRAWLED", title: "Sitemap URL’si taranamadı" },
-  { code: "POSSIBLE_ORPHAN", title: "Olası yetim sayfa" },
+  { code: "DUPLICATE_TITLE", title: turkish("m171") },
+  { code: "DUPLICATE_DESCRIPTION", title: turkish("m173") },
+  { code: "DUPLICATE_CONTENT", title: turkish("m175") },
+  { code: "SITEMAP_URL_UNCRAWLED", title: turkish("m194") },
+  { code: "POSSIBLE_ORPHAN", title: turkish("m197") },
 ];
 /** Sitemap bulunamazsa anlamsız kalan, bu yüzden "sorun yok" sayılmaması gereken kurallar. */
 export const SITEMAP_RULES = [
@@ -226,7 +227,7 @@ const groups = (
 ) => {
   const m = new Map<string, PageInput[]>();
   for (const p of ps) {
-    if (!p.statusCode || p.statusCode < 200 || p.statusCode >= 300 || p.error)
+    if (!okHtml(p) || p.error)
       continue;
     const v = pick(p)?.trim().toLocaleLowerCase("tr-TR");
     if (v) m.set(v, [...(m.get(v) ?? []), p]);
@@ -252,7 +253,7 @@ export function runRules(c: SiteContext) {
     "HTTP_ERROR",
     "CRITICAL",
     (x) => !!x.error || (x.statusCode ?? 0) >= 400,
-    (x) => ({ durum: x.statusCode ?? "Yanıt alınamadı", hata: x.error }),
+    (x) => ({ durum: x.statusCode ?? turkish("m300"), hata: x.error }),
   );
   collect(
     "REDIRECT_CHAIN",
@@ -402,9 +403,9 @@ export function runRules(c: SiteContext) {
     "CANONICAL_UNREACHABLE",
     "CRITICAL",
     (x) =>
-      !!x.canonical &&
+      okHtml(x) && !!x.canonical &&
       by.has(x.canonical) &&
-      by.get(x.canonical)?.statusCode !== 200,
+      !okHtml(by.get(x.canonical)!),
     (x) => ({
       canonical: x.canonical,
       hedefDurumu: by.get(x.canonical!)?.statusCode,
@@ -446,10 +447,10 @@ export function runRules(c: SiteContext) {
   );
   if (json.length) out.push(make("JSONLD_INVALID", "WARNING", json));
   for (const [code, title, pick] of [
-    ["DUPLICATE_TITLE", "Tekrarlanan sayfa başlığı", (x: PageInput) => x.title],
+    ["DUPLICATE_TITLE", turkish("m171"), (x: PageInput) => x.title],
     [
       "DUPLICATE_DESCRIPTION",
-      "Tekrarlanan meta açıklama",
+      turkish("m173"),
       (x: PageInput) => x.description,
     ],
   ] as const)
@@ -458,8 +459,8 @@ export function runRules(c: SiteContext) {
         code,
         severity: "WARNING",
         title,
-        description: "Aynı değer birden fazla sayfada kullanılıyor.",
-        recommendation: "Her sayfa için özgün bir değer yazın.",
+        description: turkish("m301"),
+        recommendation: turkish("m302"),
         affectedUrls: ps.map((x) => x.url),
         evidence: ps.map((x) => ({ url: x.url, deger: value })),
       });
@@ -467,11 +468,11 @@ export function runRules(c: SiteContext) {
     out.push({
       code: "DUPLICATE_CONTENT",
       severity: "WARNING",
-      title: "Birebir aynı içerik adayı",
+      title: turkish("m175"),
       description:
-        "Metin özeti aynı. Bu teknik bir adaydır; Google değerlendirmesi değildir.",
+        turkish("m303"),
       recommendation:
-        "Sayfaları birleştirmeyi, özgünleştirmeyi veya canonical sinyalini değerlendirin.",
+        turkish("m304"),
       affectedUrls: ps.map((x) => x.url),
       evidence: ps.map((x) => ({ url: x.url, icerikOzeti: x.contentHash })),
     });
@@ -480,9 +481,9 @@ export function runRules(c: SiteContext) {
     out.push({
       code: "SITEMAP_URL_UNCRAWLED",
       severity: "WARNING",
-      title: "Sitemap URL’si taranamadı",
-      description: "Sitemap adresi tarama sonuçlarında bulunamadı.",
-      recommendation: "Adresin erişilebilir ve kapsamda olduğunu kontrol edin.",
+      title: turkish("m194"),
+      description: turkish("m305"),
+      recommendation: turkish("m306"),
       affectedUrls: missing,
       evidence: missing.map((url) => ({ url })),
     });
@@ -498,20 +499,20 @@ export function runRules(c: SiteContext) {
     out.push({
       code: "POSSIBLE_ORPHAN",
       severity: "WARNING",
-      title: "Olası yetim sayfa",
-      description: `Sitemap’te var ancak taranan iç bağlantı grafiğinde referans yok.${c.crawlLimited ? " Tarama sınırlı olduğu için bu kesin değildir." : ""}`,
+      title: turkish("m197"),
+      description: turkish("m307", [c.crawlLimited ? turkish("m308") : ""]),
       recommendation:
-        "Önemliyse bağlamsal iç bağlantı ekleyin; değilse sitemap gerekliliğini değerlendirin.",
+        turkish("m309"),
       affectedUrls: orphan,
       evidence: orphan.map((url) => ({
         url,
-        not: "Kesin Google dizin bilgisi değildir",
+        not: turkish("m201"),
       })),
     });
   for (const x of p)
     for (const h of x.hreflangs ?? []) {
       const target = by.get(h.url);
-      if (!target || !target.hreflangs?.some((b) => b.url === x.url))
+      if (target && okHtml(target) && !target.hreflangs?.some((b) => b.url === x.url))
         out.push(
           make("HREFLANG_RETURN_MISSING", "WARNING", [
             { url: x.url, evidence: { dil: h.lang, hedef: h.url } },
@@ -521,13 +522,13 @@ export function runRules(c: SiteContext) {
   if (c.sitemapFound === false)
     out.push(
       make("SITEMAP_MISSING", "WARNING", [
-        { url: c.robotsUrl.replace(/robots\.txt$/, "sitemap.xml"), evidence: { durum: "Bulunamadı" } },
+        { url: c.robotsUrl.replace(/robots\.txt$/, "sitemap.xml"), evidence: { durum: turkish("m310") } },
       ]),
     );
   if (!c.robotsAccessible)
     out.push(
       make("ROBOTS_UNAVAILABLE", "WARNING", [
-        { url: c.robotsUrl, evidence: { durum: "Erişilemedi" } },
+        { url: c.robotsUrl, evidence: { durum: turkish("m311") } },
       ]),
     );
   return out;

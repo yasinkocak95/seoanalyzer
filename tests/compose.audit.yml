@@ -1,0 +1,46 @@
+# Isolated regression environment; no production ports, data or service names.
+services:
+  postgres:
+    image: postgres:16-alpine
+    mem_limit: 256m
+    environment: { POSTGRES_USER: audit, POSTGRES_PASSWORD: audit, POSTGRES_DB: audit }
+    healthcheck:
+      test: [CMD-SHELL, pg_isready -U audit -d audit]
+      interval: 2s
+      timeout: 2s
+      retries: 20
+  redis:
+    image: redis:7-alpine
+    mem_limit: 64m
+  fixture:
+    image: node:22-bookworm-slim
+    working_dir: /fixtures
+    volumes: ["./:/fixtures:ro"]
+    command: node integration-fixture.mjs
+  verify:
+    image: seoanalyzer-worker
+    working_dir: /app
+    environment:
+      DATABASE_URL: postgresql://audit:audit@postgres:5432/audit?schema=public
+      REDIS_URL: redis://redis:6379
+      ALLOW_LOCAL_TEST_URLS: "true"
+      REQUEST_DELAY_MS: "0"
+      REQUEST_TIMEOUT_MS: "800"
+      CRAWL_MAX_RETRIES: "1"
+      CRAWL_CONCURRENCY: "2"
+      MAX_IMAGE_CHECKS: "0"
+      MAX_RESPONSE_BYTES: "65536"
+      MAX_CRAWL_DURATION_SECONDS: "120"
+      CRAWLEE_STORAGE_DIR: /tmp/crawlee-audit
+    volumes:
+      - ./:/fixtures:ro
+      - ../apps/worker/dist:/app/apps/worker/dist:ro
+      - ../packages/shared/dist:/app/packages/shared/dist:ro
+      - ../packages/shared/package.json:/app/packages/shared/package.json:ro
+      - ../packages/rules/dist:/app/packages/rules/dist:ro
+      - ../packages/rules/package.json:/app/packages/rules/package.json:ro
+    command: node /fixtures/integration-crawl.mjs
+    depends_on:
+      postgres: { condition: service_healthy }
+      redis: { condition: service_started }
+      fixture: { condition: service_started }

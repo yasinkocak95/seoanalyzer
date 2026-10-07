@@ -1,3 +1,4 @@
+import {translator,turkish,type Locale} from '@seo/shared/i18n';
 export type Severity = "CRITICAL" | "WARNING" | "INFO";
 export type RawFinding = {
   code: string;
@@ -82,11 +83,12 @@ export function passedRules(checked: unknown, groups: FindingGroup[]) {
 }
 
 export const severityLabel: Record<Severity, string> = {
-  CRITICAL: "Kritik",
-  WARNING: "İyileştirilmeli",
-  INFO: "Bilgi",
+  CRITICAL: turkish("m035"),
+  WARNING: turkish("m036"),
+  INFO: turkish("m037"),
 };
 
-export function scoreLabel(score: number) {
-  return score >= 90 ? "Çok iyi" : score >= 75 ? "İyi" : score >= 50 ? "Geliştirilmeli" : "Zayıf";
+export function scoreLabel(score: number,locale:Locale='tr') {
+  const t=translator(locale);
+  return score >= 90 ? t("m082") : score >= 75 ? t("m083") : score >= 50 ? t("m084") : t("m085");
 }

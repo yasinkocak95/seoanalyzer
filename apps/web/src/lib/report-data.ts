@@ -1,3 +1,4 @@
+import {translator,numberLocale,localizeFinding,localizeEvidence,turkish,type Locale} from '@seo/shared/i18n';
 import { createHmac, timingSafeEqual } from "node:crypto";
 import { db } from "@seo/db";
 import { countBySeverity, groupFindings, passedRules } from "./findings";
@@ -7,7 +8,7 @@ const secret = () =>
 export const signExport = (crawlId: string) =>
   createHmac("sha256", secret()).update(crawlId).digest("hex");
 export function verifyExport(crawlId: string, token: string | null) {
-  if (!token) return false;
+  if (!token || !/^[a-f0-9]{64}$/.test(token)) return false;
   const expected = signExport(crawlId);
   try {
     return timingSafeEqual(
@@ -22,12 +23,14 @@ const safe = (value: unknown, max = 4000) =>
   String(value ?? "")
     .replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F]/g, "")
     .slice(0, max);
-export async function getReportData(crawlId: string) {
+export async function getReportData(crawlId: string,locale:Locale='tr') {
+  const t=translator(locale);
+  if(await db.finding.count({where:{crawlId}})>2000)throw new Error(t('m093'));
   const crawl = await db.crawl.findUnique({
     where: { id: crawlId },
-    include: { findings: { orderBy: { severity: "asc" } }, exclusions: true },
+    include: { findings: { orderBy: { severity: "asc" } } },
   });
-  if (!crawl) throw new Error("Rapor bulunamadı.");
+  if (!crawl) throw new Error(t("m092"));
   const affectedCount = crawl.findings.reduce(
     (sum, f) =>
       sum + (Array.isArray(f.affectedUrls) ? f.affectedUrls.length : 0),
@@ -35,7 +38,7 @@ export async function getReportData(crawlId: string) {
   );
   if (crawl.findings.length > 2000 || affectedCount > 20000)
     throw new Error(
-      "Rapor dışa aktarma sınırını aşıyor; filtrelenmiş rapor üretimi gerekir.",
+      t("m093"),
     );
   const excludedCount = await db.crawlUrl.count({
     where: {
@@ -45,7 +48,7 @@ export async function getReportData(crawlId: string) {
   });
   if (excludedCount > 5000)
     throw new Error(
-      "Kapsam dışı ve bekleyen URL listesi dışa aktarma sınırını aşıyor.",
+      t("m094"),
     );
   const previous = await db.crawl.findFirst({
     where: {
@@ -57,7 +60,7 @@ export async function getReportData(crawlId: string) {
     include: { findings: true },
   });
   const templates = await getTemplates(crawlId);
-  const groups = attachTemplates(groupFindings(crawl.findings), templates);
+  const groups = attachTemplates(groupFindings(crawl.findings.map(f=>localizeFinding(f,locale))), templates);
   const old = new Set(previous?.findings.map((f) => f.fingerprint) ?? []),
     now = new Set(crawl.findings.map((f) => f.fingerprint));
   const excluded = await db.crawlUrl.findMany({
@@ -70,6 +73,7 @@ export async function getReportData(crawlId: string) {
     take: 5000,
   });
   return {
+    locale,
     crawl: {
       id: crawl.id,
       host: crawl.normalizedHost,
@@ -85,14 +89,14 @@ export async function getReportData(crawlId: string) {
       redirects: crawl.redirectCount,
       skipped: crawl.skippedUrls,
       fullCrawl: crawl.fullCrawl,
-      partialReason: crawl.partialReason,
+      partialReason: crawl.partialReason===null?null:t(crawl.partialReason),
     },
     counts: countBySeverity(groups),
     score: crawl.score,
     previousScore: previous?.score ?? null,
     passed: passedRules(crawl.checkedRules, groups)?.map((r) => ({
       code: r.code,
-      title: safe(r.title, 300),
+      title: safe(t(r.title), 300),
     })) ?? null,
     findings: groups.map((f) => ({
       code: f.code,
@@ -107,7 +111,7 @@ export async function getReportData(crawlId: string) {
           g.label === null
             ? null
             : f.code === "DUPLICATE_CONTENT"
-              ? `Grup ${i + 1}`
+              ? t("m331", [i + 1])
               : `“${safe(g.label, 300)}”`,
         urls: g.urls.map((u) => safe(u, 2048)),
       })),
@@ -117,7 +121,7 @@ export async function getReportData(crawlId: string) {
       })),
       evidence: f.groups
         .flatMap((g) => g.evidence)
-        .map((e) => safe(JSON.stringify(e), 3000)),
+        .map((e) => safe(JSON.stringify(localizeEvidence(e,locale)), 3000)),
     })),
     templates: templates.map((t) => ({
       ...t,
@@ -126,8 +130,8 @@ export async function getReportData(crawlId: string) {
     })),
     excluded: excluded.map((x) => ({
       url: safe(x.url, 2048),
-      status: x.status,
-      reason: safe(x.lastError ?? "Bekliyor", 500),
+      status: t(x.status),
+      reason: safe(t(x.lastError ?? t("m095")), 500),
     })),
     comparison: {
       new: crawl.findings.filter((f) => !old.has(f.fingerprint)).length,
@@ -141,21 +145,23 @@ export async function getReportData(crawlId: string) {
 export type ReportData = Awaited<ReturnType<typeof getReportData>>;
 /** Bir şablonun örneklerinde görülen bulguların tek satırlık özeti (PDF ve Word için). */
 export function templateFindings(data: ReportData, pattern: string, samples: number) {
+  const locale=data.locale,t=translator(locale);
   const found = data.findings.flatMap((f) => {
     const h = f.templateHits.find((x) => x.pattern === pattern);
-    return h ? [`${f.title} (${h.urls.length}/${samples} örnekte)`] : [];
+    return h ? [t("m096", [f.title, h.urls.length, samples])] : [];
   });
   return found.length
-    ? `Örneklerin bulguları: ${found.join(", ")}`
-    : "Örneklerde sorun bulunmadı.";
+    ? t("m097", [found.join(", ")])
+    : t("m098");
 }
 export function reportFilename(data: ReportData, extension: "pdf" | "docx") {
-  const date = new Intl.DateTimeFormat("tr-TR", {
+  const locale=data.locale,t=translator(locale);
+  const date = new Intl.DateTimeFormat(numberLocale(locale), {
     year: "numeric",
     month: "2-digit",
     day: "2-digit",
   })
     .format(data.crawl.completedAt ?? data.crawl.createdAt)
-    .replace(/\./g, "-");
+    .replace(/[.\/]/g, "-");
   return `seo-raporu-${data.crawl.host.replace(/[^a-z0-9.-]/gi, "-")}-${date}.${extension}`;
 }

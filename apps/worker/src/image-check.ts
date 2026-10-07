@@ -1,3 +1,4 @@
+import { turkish } from '@seo/shared/i18n';
 import { safeFetch } from "./fetch-safe.js";
 
 const maxChecks = Number(process.env.MAX_IMAGE_CHECKS ?? 300),
@@ -15,7 +16,7 @@ async function status(src: string): Promise<number | string | null> {
     }
     return response.status >= 400 ? response.status : null;
   } catch (error) {
-    return error instanceof Error ? error.message : "Yüklenemedi";
+    return error instanceof Error ? error.message : turkish("m221");
   }
 }
 

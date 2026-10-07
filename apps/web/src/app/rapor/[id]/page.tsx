@@ -1,3 +1,6 @@
+export const metadata={robots:{index:false,follow:false}};
+import { getLocale } from '@/lib/locale';
+import { translator, numberLocale, localizeFinding, turkish, type Locale } from '@seo/shared/i18n';
 import Link from "next/link";
 import { db } from "@seo/db";
 import { notFound, redirect } from "next/navigation";
@@ -28,6 +31,7 @@ export default async function Report({
 }: {
   params: Promise<{ id: string }>;
 }) {
+  const locale=await getLocale(),translate=translator(locale);
   const { id } = await params;
   const crawl = await db.crawl.findUnique({
     where: { id },
@@ -37,9 +41,9 @@ export default async function Report({
   if (!["COMPLETED", "PARTIAL"].includes(crawl.status))
     redirect(`/tarama/${id}`);
   const templates = await getTemplates(id);
-  const groups = attachTemplates(groupFindings(crawl.findings), templates),
+  const groups = attachTemplates(groupFindings(crawl.findings.map(f=>localizeFinding(f,locale))), templates),
     counts = countBySeverity(groups),
-    passed = passedRules(crawl.checkedRules, groups);
+    passed = passedRules(crawl.checkedRules, groups)?.map(r=>({...r,title:translate(r.title)}));
   const previous = await db.crawl.findFirst({
       where: {
         normalizedHost: crawl.normalizedHost,
@@ -54,11 +58,11 @@ export default async function Report({
     <main className="container py-10">
       <div className="mb-8 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
         <div>
-          <p className="text-sm font-bold text-action">SEO ANALİZ RAPORU</p>
-          <h1 className="mt-2 text-3xl font-black text-brand">Site özeti</h1>
+          <p className="text-sm font-bold text-action">{translate("m117")}</p>
+          <h1 className="mt-2 text-3xl font-black text-brand">{translate("m118")}</h1>
           <p className="mt-2 break-all text-sm text-muted">
             {crawl.rootUrl} ·{" "}
-            {new Intl.DateTimeFormat("tr-TR", {
+            {new Intl.DateTimeFormat(numberLocale(locale), {
               dateStyle: "long",
               timeStyle: "short",
               timeZone: "Europe/Istanbul",
@@ -68,25 +72,22 @@ export default async function Report({
         <div className="flex flex-wrap gap-2">
           <a
             className="btn"
-            href={`/api/crawls/${id}/export/pdf?token=${token}`}
+            href={`/api/crawls/${id}/export/pdf?token=${token}&lang=${locale}`}
           >
             <Download size={17} />
-            PDF indir
-          </a>
+             {translate("m119")} </a>
           <a
             className="btn"
-            href={`/api/crawls/${id}/export/word?token=${token}`}
+            href={`/api/crawls/${id}/export/word?token=${token}&lang=${locale}`}
           >
             <Download size={17} />
-            Word indir
-          </a>
+             {translate("m120")} </a>
           <a
             className="btn"
-            href={`/api/crawls/${id}/export/csv?token=${token}`}
+            href={`/api/crawls/${id}/export/csv?token=${token}&lang=${locale}`}
           >
             <Download size={17} />
-            CSV indir
-          </a>
+             {translate("m121")} </a>
           <RescanButton url={crawl.rootUrl} full={crawl.fullCrawl} />
           {previous && (
             <Link
@@ -94,8 +95,7 @@ export default async function Report({
               href={`/karsilastir/${id}?onceki=${previous.id}`}
             >
               <GitCompareArrows size={17} />
-              Karşılaştır
-            </Link>
+               {translate("m122")} </Link>
           )}
         </div>
       </div>
@@ -103,69 +103,57 @@ export default async function Report({
         <div className="warning mb-7 rounded-xl p-5">
           <b className="flex items-center gap-2">
             <RefreshCcw size={18} />
-            Kısmi tarama
-          </b>
+             {translate("m123")} </b>
           <p className="mt-1 text-sm">
-            {crawl.partialReason} Bekleyen URL’ler tarama durumundan
-            sürdürülebilir.
-          </p>
+            {translate(crawl.partialReason)}  {translate("m124")} </p>
         </div>
       )}
       {crawl.skippedUrls > 0 && (
         <div className="info mb-7 flex flex-wrap items-center gap-4 rounded-xl p-5">
           <Layers size={22} />
           <div className="flex-1">
-            <b>Örneklemeli tarama</b>
+            <b>{translate("m125")}</b>
             <p className="mt-1 text-sm">
-              Tekrar eden URL şablonlarında her şablondan birkaç örnek analiz
-              edildi.{" "}
+               {translate("m126")}{" "}
               <b>
-                {crawl.skippedUrls.toLocaleString("tr-TR")} URL keşfedildi,
-                analiz edilmedi.
-              </b>{" "}
-              Bulgular ve puan örneklere dayanır. Her URL’yi analiz etmek için
-              tam tarama yapın.
-            </p>
+                {crawl.skippedUrls.toLocaleString(numberLocale(locale))}  {translate("m127")} </b>{" "}
+               {translate("m128")} </p>
           </div>
-          <RescanButton url={crawl.rootUrl} full label="Tam tarama yap" />
+          <RescanButton url={crawl.rootUrl} full label={translate("m342")} />
         </div>
       )}
-      <ScoreCard score={crawl.score} previous={previous?.score ?? null} />
+      <ScoreCard locale={locale} score={crawl.score} previous={previous?.score ?? null} />
       <div className="mb-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <S i={FileText} l="İşlenen URL" n={crawl.processedPages} />
-        <S i={FileText} l="Analiz edilen HTML" n={crawl.analyzedHtmlPages} />
-        <S i={RefreshCcw} l="Yönlendirme" n={crawl.redirectCount} />
-        <S i={FileText} l="Bekleyen URL" n={crawl.pendingUrls} />
-        <S i={AlertCircle} l="Kritik bulgu" n={counts.critical} x="critical" />
-        <S
+        <S locale={locale} i={FileText} l={translate("m062")} n={crawl.processedPages} />
+        <S locale={locale} i={FileText} l={translate("m325")} n={crawl.analyzedHtmlPages} />
+        <S locale={locale} i={RefreshCcw} l={translate("m024")} n={crawl.redirectCount} />
+        <S locale={locale} i={FileText} l={translate("m341")} n={crawl.pendingUrls} />
+        <S locale={locale} i={AlertCircle} l={translate("m340")} n={counts.critical} x="critical" />
+        <S locale={locale}
           i={TriangleAlert}
-          l="İyileştirilmeli"
+          l={translate("m036")}
           n={counts.warning}
           x="warning"
         />
-        <S i={CheckCircle2} l="Bilgilendirme" n={counts.info} />
-        <S i={AlertCircle} l="Hatalı URL" n={crawl.errorUrls} x="critical" />
+        <S locale={locale} i={CheckCircle2} l={translate("m339")} n={counts.info} />
+        <S locale={locale} i={AlertCircle} l={translate("m063")} n={crawl.errorUrls} x="critical" />
         {crawl.skippedUrls > 0 && (
-          <S
+          <S locale={locale}
             i={Layers}
-            l="Keşfedildi, analiz edilmedi"
+            l={translate("m129")}
             n={crawl.skippedUrls}
           />
         )}
       </div>
-      <h2 className="text-2xl font-black text-brand">Öncelikli bulgular</h2>
+      <h2 className="text-2xl font-black text-brand">{translate("m064")}</h2>
       <p className="mb-5 mt-1 text-sm text-muted">
-        Yalnız başarılı HTML sayfaları içerik kurallarına dahil edilir.
-      </p>
+         {translate("m130")} </p>
       <ReportFindings findings={groups} />
       {templates.length > 0 && (
         <section className="mt-12">
-          <h2 className="text-2xl font-black text-brand">URL grupları</h2>
+          <h2 className="text-2xl font-black text-brand">{translate("m068")}</h2>
           <p className="mt-1 text-sm text-muted">
-            Siteye özgü olarak URL yapısından tespit edilen şablonlar. Örneklerin
-            sayfa yapısı birbirinden farklı çıkarsa grup örneklenmez, tamamı
-            analiz edilir.
-          </p>
+             {translate("m131")} </p>
           <div className="mt-4 space-y-3">
             {templates.map((t) => {
               const found = groups.filter((g) =>
@@ -179,41 +167,40 @@ export default async function Report({
                       className={`badge ${t.status === "MIXED" ? "warning" : "info"}`}
                     >
                       {t.status === "MIXED"
-                        ? "Farklı sayfa türleri – tamamı analiz edildi"
+                        ? translate("m132")
                         : t.status === "SAMPLED"
-                          ? "Örneklendi"
-                          : "Örnekleme tamamlanmadı"}
+                          ? translate("m133")
+                          : translate("m134")}
                     </span>
                   </div>
                   <div className="mt-3 grid gap-3 text-sm sm:grid-cols-3">
                     <div>
                       <b className="block text-xl text-brand">
-                        {t.discovered.toLocaleString("tr-TR")}
+                        {t.discovered.toLocaleString(numberLocale(locale))}
                       </b>
-                      <small className="text-muted">Keşfedilen URL</small>
+                      <small className="text-muted">{translate("m135")}</small>
                     </div>
                     <div>
                       <b className="block text-xl text-brand">
-                        {t.analyzed.toLocaleString("tr-TR")}
+                        {t.analyzed.toLocaleString(numberLocale(locale))}
                       </b>
                       <small className="text-muted">
                         {t.status === "MIXED"
-                          ? "Analiz edilen URL"
-                          : "Analiz edilen örnek"}
+                          ? translate("m343")
+                          : translate("m136")}
                       </small>
                     </div>
                     <div>
                       <b className="block text-xl text-brand">
-                        {t.skipped.toLocaleString("tr-TR")}
+                        {t.skipped.toLocaleString(numberLocale(locale))}
                       </b>
                       <small className="text-muted">
-                        Keşfedildi, analiz edilmedi
-                      </small>
+                         {translate("m129")} </small>
                     </div>
                   </div>
                   {t.status !== "MIXED" && (
                     <div className="mt-4 text-sm">
-                      <b className="text-brand">Örneklerin bulguları</b>
+                      <b className="text-brand">{translate("m137")}</b>
                       {found.length ? (
                         <ul className="mt-1 space-y-1">
                           {found.map((g) => {
@@ -224,21 +211,18 @@ export default async function Report({
                               <li key={g.code}>
                                 {g.title}{" "}
                                 <small className="text-muted">
-                                  · {h.urls.length}/{t.samples.length} örnekte
-                                </small>
+                                  · {h.urls.length}/{t.samples.length}  {translate("m138")} </small>
                               </li>
                             );
                           })}
                         </ul>
                       ) : (
                         <p className="mt-1 text-muted">
-                          Örneklerde sorun bulunmadı.
-                        </p>
+                           {translate("m098")} </p>
                       )}
                       <details className="mt-2 text-xs">
                         <summary className="cursor-pointer text-action">
-                          Analiz edilen örnek URL’ler
-                        </summary>
+                           {translate("m139")} </summary>
                         {t.samples.map((u) => (
                           <div className="break-all text-action" key={u}>
                             {u}
@@ -255,16 +239,10 @@ export default async function Report({
       )}
       <section className="mt-12">
         <h2 className="text-2xl font-black text-brand">
-          Kontrol edildi, sorun yok
-        </h2>
+           {translate("m344")} </h2>
         {passed ? (
           <>
-            <p className="mt-1 text-sm text-muted">
-              Bu taramada uygulanan{" "}
-              {(passed.length + groups.length).toLocaleString("tr-TR")}{" "}
-              kontrolden {passed.length.toLocaleString("tr-TR")} tanesi sorun
-              bulmadı.
-            </p>
+            <p className="mt-1 text-sm text-muted">{translate('passedSummary',[(passed.length+groups.length).toLocaleString(numberLocale(locale)),passed.length.toLocaleString(numberLocale(locale))])}</p>
             <div className="card mt-4 grid gap-x-6 gap-y-3 p-5 sm:grid-cols-2 lg:grid-cols-3">
               {passed.map((r) => (
                 <div className="flex items-start gap-2 text-sm" key={r.code}>
@@ -282,24 +260,20 @@ export default async function Report({
           </>
         ) : (
           <p className="card mt-4 p-5 text-sm text-muted">
-            Bu tarama, kontrol listesi tutulmadan önceki bir sürümle yapıldı.
-            Listeyi ve SEO puanını görmek için siteyi yeniden tarayın.
-          </p>
+             {translate("m141")} </p>
         )}
       </section>
       <section className="mt-12">
-        <h2 className="text-2xl font-black text-brand">Yönlendirmeler</h2>
+        <h2 className="text-2xl font-black text-brand">{translate("m142")}</h2>
         <p className="mt-1 text-sm text-muted">
-          Yönlendirme tek başına hata değildir. Kaynak, durum ve hedef ayrı
-          tutulur.
-        </p>
+           {translate("m143")} </p>
         <div className="card mt-4 overflow-x-auto">
           <table className="w-full min-w-[760px] text-left text-sm">
             <thead className="border-b bg-slate-50">
               <tr>
-                <th className="p-4">Kaynak URL</th>
-                <th className="p-4">Durum</th>
-                <th className="p-4">Hedef URL</th>
+                <th className="p-4">{translate("m347")}</th>
+                <th className="p-4">{translate("m144")}</th>
+                <th className="p-4">{translate("m348")}</th>
               </tr>
             </thead>
             <tbody>
@@ -310,15 +284,14 @@ export default async function Report({
                     <span className="badge info">{p.statusCode}</span>
                   </td>
                   <td className="break-all p-4 text-action">
-                    {p.redirectTarget ?? "Hedef belirtilmedi"}
+                    {p.redirectTarget ?? translate("m349")}
                   </td>
                 </tr>
               ))}
               {!redirects.length && (
                 <tr>
                   <td className="p-5 text-muted" colSpan={3}>
-                    Gösterilecek yönlendirme yok.
-                  </td>
+                     {translate("m145")} </td>
                 </tr>
               )}
             </tbody>
@@ -326,19 +299,17 @@ export default async function Report({
         </div>
       </section>
       <section className="mt-12">
-        <h2 className="text-2xl font-black text-brand">İşlenen URL’ler</h2>
+        <h2 className="text-2xl font-black text-brand">{translate("m146")}</h2>
         <p className="mt-1 text-sm text-muted">
-          Ekranda ilk 200 kayıt gösterilir; belge çıktıları tüm bulgu URL’lerini
-          içerir.
-        </p>
+           {translate("m147")} </p>
         <div className="card mt-4 overflow-x-auto">
           <table className="w-full min-w-[700px] text-left text-sm">
             <thead className="border-b bg-slate-50">
               <tr>
-                <th className="p-4">URL</th>
-                <th className="p-4">Tür</th>
-                <th className="p-4">Durum</th>
-                <th className="p-4">Title</th>
+                <th className="p-4">{translate("m039")}</th>
+                <th className="p-4">{translate("m148")}</th>
+                <th className="p-4">{translate("m144")}</th>
+                <th className="p-4">{translate("m081")}</th>
               </tr>
             </thead>
             <tbody>
@@ -351,17 +322,17 @@ export default async function Report({
                     {
                       {
                         HTML: "HTML",
-                        REDIRECT: "Yönlendirme",
-                        NON_HTML: "HTML dışı",
-                        ERROR: "Hata",
+                        REDIRECT: translate("m024"),
+                        NON_HTML: translate("m149"),
+                        ERROR: translate("m150"),
                       }[p.responseKind]
                     }
                   </td>
-                  <td className="p-4">{p.statusCode ?? "Hata"}</td>
+                  <td className="p-4">{p.statusCode ?? translate("m150")}</td>
                   <td className="p-4">
                     {p.responseKind === "HTML"
                       ? p.title || "—"
-                      : "İçerik analizi uygulanmadı"}
+                      : translate("m151")}
                   </td>
                 </tr>
               ))}
@@ -374,17 +345,16 @@ export default async function Report({
 }
 function ScoreCard({
   score,
-  previous,
+  previous, locale,
 }: {
   score: number | null;
-  previous: number | null;
+  previous: number | null; locale:Locale;
 }) {
+  const translate=translator(locale);
   if (score === null)
     return (
       <div className="card mb-4 p-5 text-sm text-muted">
-        SEO puanı bu taramadan sonra eklendi. Puanı görmek için siteyi yeniden
-        tarayın.
-      </div>
+         {translate("m152")} </div>
     );
   const color =
       score >= 75
@@ -398,12 +368,10 @@ function ScoreCard({
       <div className={`text-6xl font-black ${color}`}>{score}</div>
       <div className="flex-1">
         <b className="block text-lg text-brand">
-          SEO puanı · {scoreLabel(score)}
+           {translate("m153")} {scoreLabel(score,locale)}
         </b>
         <p className="text-sm text-muted">
-          100 üzerinden. Bulguların önem derecesine ve etkilenen sayfa oranına
-          göre hesaplanır.
-        </p>
+           {translate("m154")} </p>
       </div>
       {diff !== null && (
         <div className="text-right text-sm">
@@ -420,7 +388,7 @@ function ScoreCard({
             {diff}
           </b>
           <small className="block text-muted">
-            önceki tarama: {previous}
+             {translate("m155")} {previous}
           </small>
         </div>
       )}
@@ -428,16 +396,17 @@ function ScoreCard({
   );
 }
 function S({
-  i: Icon,
+  i: Icon, locale,
   l,
   n,
   x = "info",
 }: {
-  i: typeof FileText;
+  i: typeof FileText; locale:Locale;
   l: string;
   n: number;
   x?: string;
 }) {
+  const translate=translator(locale);
   return (
     <div className="card flex gap-4 p-5">
       <span className={`grid h-11 w-11 place-items-center rounded-xl ${x}`}>
@@ -445,7 +414,7 @@ function S({
       </span>
       <div>
         <div className="text-2xl font-black text-brand">
-          {n.toLocaleString("tr-TR")}
+          {n.toLocaleString(numberLocale(locale))}
         </div>
         <small>{l}</small>
       </div>

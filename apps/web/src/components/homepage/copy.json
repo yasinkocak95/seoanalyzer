@@ -1,0 +1,176 @@
+{
+  "brand": "SEO Denetim",
+  "nav": [
+    "Özellikler",
+    "Nasıl Çalışır?",
+    "Ekran Görüntüleri",
+    "SSS"
+  ],
+  "newAnalysis": "Yeni analiz",
+  "crawls": "Taramalar",
+  "start": "Analiz Başlat",
+  "freeStart": "Ücretsiz Analiz Başlat",
+  "how": "Nasıl Çalışır?",
+  "chips": [
+    "%100 Ücretsiz",
+    "Üçüncü taraf API yok",
+    "Kayıt gerektirmez"
+  ],
+  "heading": [
+    "Sitenizin SEO sorunlarını",
+    "kanıtlarıyla",
+    "görün."
+  ],
+  "description": "Site çapında teknik ve sayfa içi SEO analizi yapın. Öncelikleri ve nasıl düzelteceğinizi tek raporda inceleyin.",
+  "checks": [
+    "Kayıt gerekmez",
+    "Sınırsız analiz",
+    "Üçüncü taraf API yok"
+  ],
+  "formTitle": "Bir URL ile başlayın.",
+  "formDescription": "Sitenizin adresini girin, iyileştirme fırsatlarını keşfedin.",
+  "formLabel": "ÜCRETSİZ SEO ANALİZİ",
+  "preview": "Örnek rapor",
+  "demo": "DEMO",
+  "overview": "Tarama özeti",
+  "site": "ornek-site.com",
+  "complete": "Tamamlandı",
+  "kpis": [
+    "Toplam URL",
+    "HTML Sayfa",
+    "Yönlendirme",
+    "Hata"
+  ],
+  "findings": "Önemli bulgular",
+  "allFindings": "Tüm bulgular",
+  "pdf": "PDF İndir",
+  "word": "Word İndir",
+  "distribution": "URL dağılımı",
+  "urls": "URL",
+  "html": "HTML sayfalar",
+  "redirects": "Yönlendirmeler",
+  "previewNote": "Örnek verilerle hazırlanmış uygulama görünümü.",
+  "features": [
+    {
+      "title": "Site çapında tarama",
+      "description": "Tek bir sayfayla sınırlı kalmayın. Sitenizin bütününü inceleyin."
+    },
+    {
+      "title": "Kanıtlanabilir bulgular",
+      "description": "Her sorun için ilgili URL, somut kanıt ve düzeltme önerisi."
+    },
+    {
+      "title": "Tarama karşılaştırması",
+      "description": "Yeni, devam eden ve çözülen sorunları birlikte görün."
+    },
+    {
+      "title": "PDF ve Word rapor",
+      "description": "Bulgularınızı paylaşılabilir, düzenli raporlara dönüştürün."
+    }
+  ],
+  "analysisLabel": "DETAYLARDA SAKLI FIRSATLAR",
+  "analysisTitle": "Neler analiz ediyoruz?",
+  "analysisDescription": "Teknik detaylardan sayfa içeriğine, sitenizin SEO sağlığını etkileyen noktalar tek bir yerde.",
+  "analysis": [
+    {
+      "title": "Teknik SEO",
+      "description": "Durum kodları, robots.txt ve sitemap kontrolleri."
+    },
+    {
+      "title": "Sayfa içi SEO",
+      "description": "Title, meta açıklaması, başlıklar ve içerik."
+    },
+    {
+      "title": "Bağlantılar",
+      "description": "Kırık iç linkler ve yönlendirme zincirleri."
+    },
+    {
+      "title": "Görseller",
+      "description": "Eksik alt metinler ve erişilemeyen görseller."
+    },
+    {
+      "title": "Hreflang & Canonical",
+      "description": "Dil alternatifleri ve canonical tutarlılığı."
+    },
+    {
+      "title": "Raporlama",
+      "description": "Öncelikler, URL bazında kanıtlar ve öneriler."
+    }
+  ],
+  "rows": [
+    {
+      "title": "Kırık iç link",
+      "url": "/blog/seo-rehberi",
+      "severity": "Kritik",
+      "count": 3
+    },
+    {
+      "title": "Eksik meta açıklaması",
+      "url": "/hizmetler",
+      "severity": "Uyarı",
+      "count": 8
+    },
+    {
+      "title": "Aynı title kullanan sayfa",
+      "url": "/blog/teknik-seo",
+      "severity": "Uyarı",
+      "count": 4
+    },
+    {
+      "title": "Hreflang eksik",
+      "url": "/en/about",
+      "severity": "Uyarı",
+      "count": 2
+    },
+    {
+      "title": "Yönlendirme zinciri",
+      "url": "/eski-rehber",
+      "severity": "Uyarı",
+      "count": 2
+    }
+  ],
+  "reportLabel": "BULGU DETAYLARI",
+  "reportTitle": "Sorunu görün. Nereden başlayacağınızı bilin.",
+  "reportDescription": "Öncelik sırası, etkilenen adres ve gözlenen kanıt aynı raporda.",
+  "findingColumn": "Bulgu / URL",
+  "priorityColumn": "Öncelik",
+  "howLabel": "ÜÇ BASİT ADIM",
+  "howTitle": "URL’den aksiyona, tek bir akış.",
+  "steps": [
+    {
+      "title": "Site adresini girin",
+      "description": "Herkese açık sitenizin URL’sini yazın. İsterseniz tam taramayı seçin."
+    },
+    {
+      "title": "Taramanızı takip edin",
+      "description": "Site çapındaki analizinizin ilerlemesini tarama ekranında izleyin."
+    },
+    {
+      "title": "Bulguları iyileştirmeye dönüştürün",
+      "description": "Kanıtları ve önerileri inceleyin; raporunuzu PDF veya Word olarak paylaşın."
+    }
+  ],
+  "faqLabel": "MERAK EDİLENLER",
+  "faqTitle": "Başlamadan önce.",
+  "faqs": [
+    {
+      "q": "Gerçekten ücretsiz mi?",
+      "a": "Evet. Kayıt olmadan ücretsiz analiz başlatabilirsiniz. Üçüncü taraf bir API anahtarı gerekmez."
+    },
+    {
+      "q": "Tam tarama ne işe yarar?",
+      "a": "Tekrar eden URL şablonlarında örnek almak yerine tüm URL’leri analiz eder. Büyük sitelerde tarama daha uzun sürebilir."
+    },
+    {
+      "q": "Raporda hangi bilgiler yer alır?",
+      "a": "Teknik ve sayfa içi SEO bulguları, etkilenen URL’ler, gözlenen kanıtlar ve uygulanabilir düzeltme önerileri yer alır."
+    },
+    {
+      "q": "Tarama sonuçları Google sıralamasını gösterir mi?",
+      "a": "Hayır. Bu araç site üzerinde gözlenebilen SEO sorunlarını analiz eder; Google sıralamasını veya gerçek dizin durumunu ölçmez."
+    }
+  ],
+  "scopeTitle": "Kapsam notu",
+  "scope": "Lighthouse, hız, Core Web Vitals, erişilebilirlik puanı, Google sıralaması veya gerçek dizin durumu ölçülmez.",
+  "language": "Dil seçimi"
+}

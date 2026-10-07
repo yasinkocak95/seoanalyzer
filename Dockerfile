@@ -9,7 +9,7 @@ COPY apps/worker/package.json apps/worker/package.json
 COPY packages/db/package.json packages/db/package.json
 COPY packages/rules/package.json packages/rules/package.json
 COPY packages/shared/package.json packages/shared/package.json
-RUN npm install
+RUN npm ci
 COPY . .
 RUN npm run db:generate && npm run build:packages
 
