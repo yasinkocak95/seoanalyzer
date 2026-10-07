@@ -20,7 +20,7 @@ jobs:
       # Local CI values only. No production services or credentials.
       DATABASE_URL: postgresql://audit:audit@localhost:5432/audit?schema=public
       REDIS_URL: redis://localhost:6379
-      NEXT_PUBLIC_APP_URL: http://localhost:3000
+      NEXT_PUBLIC_APP_URL: https://seo.yasinkocak.com.tr
       EXPORT_SIGNING_SECRET: ci-only-not-a-production-secret
       COMPOSE_PROJECT_NAME: seo-ci
       COMPOSE_FILE: tests/compose.audit.yml
