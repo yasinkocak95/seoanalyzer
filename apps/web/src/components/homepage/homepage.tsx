@@ -6,24 +6,28 @@ import {
 } from 'lucide-react';
 import { StartForm } from '@/components/start-form';
 import { LanguageSwitcher } from '@/components/language';
-import copy from './copy.json';
+import type { Locale } from '@seo/shared/i18n';
+import trCopy from './copy.json';
+import enCopy from './copy.en.json';
 import styles from './homepage.module.css';
 
 const featureIcons = [Globe2, ListChecks, GitCompareArrows, FileText];
 const analysisIcons = [SlidersHorizontal, FileSearch, Link2, Image, Globe2, FileText];
 const anchors = ['ozellikler', 'nasil-calisir', 'ekran-goruntuleri', 'sss'];
 
-export function Homepage() {
+export function Homepage({ locale }: { locale: Locale }) {
+  const copy: typeof trCopy = locale === 'en' ? enCopy : trCopy;
+  const homeHref = locale === 'en' ? '/en/' : '/';
   return (
     <div className={styles.landing}>
       <header className={styles.header}>
         <div className={`${styles.container} ${styles.navbar}`}>
-          <Link href="/" className={styles.logo}><span><SearchCheck size={22} /></span>{copy.brand}</Link>
+          <Link href={homeHref} className={styles.logo}><span><SearchCheck size={22} /></span>{copy.brand}</Link>
           <nav className={styles.navLinks} aria-label={copy.brand}>
             {copy.nav.map((label, index) => <a key={label} href={`#${anchors[index]}`}>{label}</a>)}
           </nav>
           <div className={styles.navActions}>
-            <Link className={styles.newAnalysis} href="/">{copy.newAnalysis}</Link>
+            <Link className={styles.newAnalysis} href={homeHref}>{copy.newAnalysis}</Link>
             <Link className={styles.crawls} href="/taramalar">{copy.crawls}</Link>
             <a className={`${styles.primary} ${styles.navCta}`} href="#analiz">{copy.start}<ArrowRight size={15} /></a>
             <LanguageSwitcher />
@@ -44,7 +48,7 @@ export function Homepage() {
               <ul className={styles.checks}>{copy.checks.map(check => <li key={check}><Check size={14} />{check}</li>)}</ul>
             </div>
             <div className={styles.previewWrap} id="ekran-goruntuleri">
-              <DashboardPreview />
+              <DashboardPreview copy={copy} />
               <p className={styles.previewCaption}>{copy.previewNote}</p>
             </div>
             <section className={styles.formCard} id="analiz" aria-labelledby="analysis-form-title">
@@ -94,7 +98,7 @@ function Severity({ critical, children }: { critical: boolean; children: React.R
   return <span className={`${styles.severity} ${critical ? styles.critical : styles.warning}`}><span />{children}</span>;
 }
 
-function DashboardPreview() {
+function DashboardPreview({ copy }: { copy: typeof trCopy }) {
   return <div className={styles.dashboard}>
     <div className={styles.browserBar}><div className={styles.browserDots}><span /><span /><span /></div><span><ShieldCheck size={12} />{copy.site}</span><span className={styles.demo}>{copy.demo}</span></div>
     <div className={styles.dashboardBody}>

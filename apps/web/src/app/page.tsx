@@ -1,7 +1,10 @@
 import { getLocale } from '@/lib/locale';
 import { translator } from '@seo/shared/i18n';
 import { Homepage } from '@/components/homepage/homepage';
-import{StartForm}from'@/components/start-form';import{FileSearch,GitCompareArrows,ListChecks,ShieldCheck}from'lucide-react';export default async function Home(){const locale=await getLocale(),t=translator(locale);if(locale==='tr')return <Homepage/>;const features=[{i:FileSearch,t:t("m005"),d:t("m006")},{i:ListChecks,t:t("m007"),d:t("m008")},{i:GitCompareArrows,t:t("m009"),d:t("m010")}];return <main><section className="border-b border-border bg-white"><div className="container grid gap-12 py-20 lg:grid-cols-[1.15fr_.85fr] lg:py-28"><div><span className="badge info mb-5"><ShieldCheck size={15}/>{t("m011")}</span><h1 className="text-4xl font-black leading-tight text-brand sm:text-6xl">{t("m012")}</h1><p className="mt-6 text-lg leading-8 text-slate-600">{t("m013")}</p></div><div className="card self-center p-6 sm:p-8"><h2 className="text-xl font-extrabold text-brand">{t("m014")}</h2><p className="mb-6 mt-2 text-sm text-muted">{t("m015")}</p><StartForm/></div></div></section><section className="container py-16"><div className="grid gap-5 md:grid-cols-3">{features.map(({i:I,t,d})=><article className="card p-6" key={t}><span className="mb-5 grid h-11 w-11 place-items-center rounded-xl bg-blue-50 text-action"><I/></span><h2 className="font-extrabold text-brand">{t}</h2><p className="mt-2 text-sm leading-6 text-muted">{d}</p></article>)}</div><div className="mt-10 rounded-xl border border-border bg-slate-100 p-5 text-sm"><strong>{t("m319")}</strong>  {t("m016")}</div></section></main>}
+export default async function Home() {
+  const locale = await getLocale();
+  return <Homepage locale={locale} />;
+}
 
 export async function generateMetadata() {
  const locale=await getLocale(),t=translator(locale),base=process.env.NEXT_PUBLIC_APP_URL??'https://seo.yasinkocak.com.tr';
