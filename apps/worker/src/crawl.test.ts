@@ -1,5 +1,13 @@
 import { describe, expect, it } from "vitest";
-import { crawlTrapReason, errorStatus, normalizeCrawlUrl, robotsAllows } from "./crawl.js";
+import { crawlTrapReason, documentBaseUrl, errorStatus, normalizeCrawlUrl, robotsAllows } from "./crawl.js";
+it('resolves relative URLs against the first HTML base href with safe fallback', () => {
+  const page = 'https://x.test/nested/page';
+  expect(new URL('product', documentBaseUrl('/shop/', page)).toString()).toBe('https://x.test/shop/product');
+  expect(documentBaseUrl('../catalog/', page)).toBe('https://x.test/catalog/');
+  expect(documentBaseUrl('https://cdn.test/', page)).toBe('https://cdn.test/');
+  expect(documentBaseUrl('javascript:alert(1)', page)).toBe(page);
+  expect(documentBaseUrl(undefined, page)).toBe(page);
+});
 describe("hata durum kodu", () => {
   it("farklı hata mesajlarından durum kodunu çıkarır", () => {
     expect(errorStatus("HTTP 404")).toBe(404);

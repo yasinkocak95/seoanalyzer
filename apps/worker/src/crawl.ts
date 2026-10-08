@@ -8,6 +8,7 @@ import { assertSafeUrl, isSameSite, normalizeUrl, safeLookup } from "@seo/shared
 import { limitedText, safeFetch } from "./fetch-safe.js";
 import { analyzeStoredPages } from "./analysis.js";
 import { TemplateSampler } from "./sampler.js";
+import { CrawlPacing } from "./crawl-pacing.js";
 const batchSize = Number(process.env.CRAWL_BATCH_SIZE ?? 25),
   maxDepth = Number(process.env.MAX_DEPTH ?? 12),
   delay = Number(process.env.REQUEST_DELAY_MS ?? 500),
@@ -103,6 +104,30 @@ const absolute = (v: string | undefined, b: string) => {
     return undefined;
   }
 };
+export function documentBaseUrl(href: string | undefined, url: string) {
+  return absolute(href, url) ?? url;
+}
+/** Equivalent to the old clone/remove/after/text pipeline without another DOM.
+ * Iterative traversal also avoids recursion on deeply nested untrusted HTML.
+ */
+export function extractPageText($: CheerioRoot) {
+  type Node = { type: string; data?: string; name?: string; children?: Node[] };
+  const root = $("main,article,body").first().get(0);
+  if (!root) return '';
+  const excluded = new Set(['script', 'style', 'noscript', 'template']);
+  const blocks = new Set('p,div,li,h1,h2,h3,h4,h5,h6,br,td,th,dt,dd,section,article,header,footer,nav,aside,blockquote,figcaption,a,button,label,option'.split(','));
+  const stack: (Node | string)[] = [root], text: string[] = [];
+  while (stack.length) {
+    const node = stack.pop()!;
+    if (typeof node === 'string') { text.push(node); continue; }
+    if (excluded.has(node.name ?? '')) continue;
+    if (node.type === 'text') text.push(node.data ?? '');
+    if (node !== root && blocks.has(node.name ?? '')) stack.push(' ');
+    const children = node.children ?? [];
+    for (let i = children.length - 1; i >= 0; i--) stack.push(children[i]);
+  }
+  return text.join('').replace(/\s+/g, ' ').trim().slice(0, 100000);
+}
 export function robotsAllows(text:string,path:string) {
   const groups:{agents:string[];rules:{allow:boolean;path:string}[]}[]=[];
   let group={agents:[] as string[],rules:[] as {allow:boolean;path:string}[]};
@@ -202,9 +227,17 @@ async function discover(
   robots: string,
   sampler?: TemplateSampler,
 ) {
+  // Persist each target once per page; retain evidence flags from repeated links.
+  const unique = new Map<string, (typeof values)[number]>();
   for (const v of values) {
-    const normalized = normalizeCrawlUrl(v.url),
-      reason = crawlTrapReason(normalized, v.depth);
+    const key = normalizeCrawlUrl(v.url), previous = unique.get(key);
+    if (previous) {
+      previous.linked ||= v.linked;
+      previous.fromSitemap ||= v.fromSitemap;
+    } else unique.set(key, { ...v });
+  }
+  for (const [normalized, v] of unique) {
+    const reason = crawlTrapReason(normalized, v.depth);
     if (reason) {
       await db.crawlUrl.upsert({
         where: { crawlId_normalized: { crawlId, normalized } },
@@ -291,22 +324,45 @@ async function counts(crawlId: string) {
     },
   });
 }
-export async function executeCrawl(crawlId: string, rootInput: string, recoverRunning=false) {
+// Both BullMQ crawl slots share cadence when they target the same site.
+const sitePacing = new Map<string, { pacing: CrawlPacing; users: number }>();
+const activeCrawls = new Set<string>();
+export async function executeCrawl(crawlId: string, rootInput: string, recoverRunning=false, onClaim?: (startedAt: Date, previous: Date | null) => Promise<void>) {
+  if (activeCrawls.has(crawlId)) throw new Error('Crawl already executing in this runtime');
+  const host = new URL(normalizeCrawlUrl(rootInput)).hostname;
+  const shared = sitePacing.get(host) ?? { pacing: new CrawlPacing(delay), users: 0 };
+  sitePacing.set(host, shared);
+  shared.users++;
+  activeCrawls.add(crawlId);
+  try { await runCrawl(crawlId, rootInput, recoverRunning, shared.pacing, onClaim); }
+  finally {
+    activeCrawls.delete(crawlId);
+    if (--shared.users === 0) sitePacing.delete(host);
+  }
+}
+async function runCrawl(crawlId: string, rootInput: string, recoverRunning: boolean, pacing: CrawlPacing, onClaim?: (startedAt: Date, previous: Date | null) => Promise<void>) {
   const root = await assertSafeUrl(rootInput),
     started = Date.now(),
     robotsUrl = new URL("/robots.txt", root).toString();
+  const previous = await db.crawl.findUniqueOrThrow({ where: { id: crawlId }, select: { status: true, startedAt: true } });
+  if (!(recoverRunning ? ["QUEUED", "PARTIAL", "RUNNING"] : ["QUEUED", "PARTIAL"]).includes(previous.status)) return;
+  const claimedAt = new Date(Math.max(Date.now(), (previous.startedAt?.getTime() ?? 0) + 1));
+  // Prepare durable recovery metadata before DB claim: a crash on either side of
+  // the Redis/DB boundary can then reconcile only this or the previous generation.
+  await onClaim?.(claimedAt, previous.startedAt);
   const claimed = await db.crawl.updateMany({
-    where: { id: crawlId, status: { in: recoverRunning ? ["QUEUED", "PARTIAL", "RUNNING"] : ["QUEUED", "PARTIAL"] } },
+    where: { id: crawlId, status: previous.status, startedAt: previous.startedAt },
     data: {
       status: "RUNNING",
-      startedAt: new Date(),
+      startedAt: claimedAt,
       completedAt: null,
       partialReason: null,
       statusMessage: turkish("m355"),
       error: null,
     },
   });
-  // Aynı tarama için eski ve yeni BullMQ işleri çakışırsa yalnızca biri ilerler.
+  // Compare the generation, including RUNNING recovery. The worker also holds a
+  // crawl-ID Redis lease for the entire execution, across different BullMQ job IDs.
   if (claimed.count !== 1) return;
   await db.crawlUrl.updateMany({
     where: { crawlId, status: "PROCESSING" },
@@ -385,11 +441,27 @@ export async function executeCrawl(crawlId: string, rootInput: string, recoverRu
         uniqueKey: item.normalized,
         userData: { crawlUrlId: item.id, depth: item.depth },
       });
-    let last = 0;
+    let lastStateCheck = 0;
     const crawler = new CheerioCrawler({
       requestQueue: queue,
       maxRequestsPerCrawl: batch.length,
       maxConcurrency: Number(process.env.CRAWL_CONCURRENCY ?? 2),
+      autoscaledPoolOptions: {
+        maybeRunIntervalSecs: Math.min(0.5, Math.max(0.025, delay / 1000)),
+        isTaskReadyFunction: async () => {
+          // Long Retry-After cooldowns must still allow pause/duration boundaries.
+          if (Date.now() - started > maxDurationMs) { crawler.stop(); return false; }
+          if (!pacing.ready() && Date.now() - lastStateCheck > 5000) {
+            lastStateCheck = Date.now();
+            const state = await db.crawl.findUniqueOrThrow({ where: { id: crawlId }, select: { status: true } });
+            if (state.status === "PAUSED") { crawler.stop(); return false; }
+          }
+          if (!pacing.ready() || await queue.isEmpty()) return false;
+          return pacing.admit();
+        },
+      },
+      // Keep permanent 4xx in our handler rather than session-pool retry logic.
+      sessionPoolOptions: { blockedStatusCodes: [] },
       // Bağlantı kopması, zaman aşımı, 5xx ve 429 gibi geçici hatalar yeniden denenir;
       // kalıcı 4xx yanıtları requestHandler içinde noRetry ile hemen kaydedilir.
       maxRequestRetries: retries,
@@ -400,11 +472,6 @@ export async function executeCrawl(crawlId: string, rootInput: string, recoverRu
       preNavigationHooks: [
         async ({ request }, options) => {
           await assertSafeUrl(request.url);
-          // Sunucu yük nedeniyle reddettiyse her denemede biraz daha uzun beklenir.
-          const backoff = request.retryCount * 2000;
-          const wait = Math.max(backoff, delay - (Date.now() - last));
-          if (wait) await new Promise((r) => setTimeout(r, wait));
-          last = Date.now();
           options.followRedirect = false;
           options.maxRedirects = 0;
           // HTTP/2'de sunucular eş zamanlı akışları REFUSED_STREAM ile reddedebiliyor;
@@ -414,7 +481,11 @@ export async function executeCrawl(crawlId: string, rootInput: string, recoverRu
           options.timeout = { request: Number(process.env.REQUEST_TIMEOUT_MS ?? 15000) };
         },
       ],
-      postNavigationHooks: [async ({ response }) => {
+      postNavigationHooks: [async ({ request, response, log }) => {
+        if (response.statusCode === 429) {
+          const waitMs = pacing.rateLimited(request.retryCount + 1, response.headers['retry-after']);
+          log.warning('Crawl rate limited; delaying task admission', { crawlId, batch: batchNo, retryCount: request.retryCount, waitMs });
+        } else if (response.statusCode && response.statusCode >= 200 && response.statusCode < 400) pacing.succeeded();
         const max=Number(process.env.MAX_RESPONSE_BYTES??5242880);
         if (Number(response.headers['content-length']??0)>max) {
           response.destroy();
@@ -426,6 +497,10 @@ export async function executeCrawl(crawlId: string, rootInput: string, recoverRu
           if (bytes>max) response.destroy(new Error(turkish('m220')));
         });
       }],
+      async errorHandler({ request, response }) {
+        // 429 is handled at headers arrival, including the final failed attempt.
+        if (response?.statusCode !== 429) pacing.retry(request.retryCount + 1);
+      },
       async requestHandler({ request, response, $ }) {
         const url = normalizeCrawlUrl(request.url),
           status = response?.statusCode ?? null,
@@ -535,11 +610,12 @@ export async function executeCrawl(crawlId: string, rootInput: string, recoverRu
           });
           return;
         }
+        const baseUrl = documentBaseUrl($('base[href]').first().attr('href'), url);
         const title = $("title").first().text().trim(),
           description = $('meta[name="description" i]').attr("content")?.trim(),
           canonical = absolute(
             $('link[rel="canonical" i]').first().attr("href"),
-            url,
+            baseUrl,
           ),
           meta = $('meta[name="robots" i]').attr("content"),
           xrobots = String(response?.headers["x-robots-tag"] ?? ""),
@@ -554,32 +630,17 @@ export async function executeCrawl(crawlId: string, rootInput: string, recoverRu
             .get(),
           images = $("img")
             .map((_, e) => ({
-              src: absolute($(e).attr("src"), url) ?? $(e).attr("src") ?? "",
+              src: absolute($(e).attr("src"), baseUrl) ?? $(e).attr("src") ?? "",
               alt: $(e).attr("alt") ?? null,
               decorative:
                 $(e).attr("role") === "presentation" ||
                 $(e).attr("aria-hidden") === "true",
             }))
             .get(),
-          text = $("main,article,body")
-            .first()
-            .clone()
-            .find("script,style,noscript,template")
-            .remove()
-            .end()
-            // Boşluksuz HTML'de bitişik bloklardaki kelimeler birleşmesin.
-            .find(
-              "p,div,li,h1,h2,h3,h4,h5,h6,br,td,th,dt,dd,section,article,header,footer,nav,aside,blockquote,figcaption,a,button,label,option",
-            )
-            .after(" ")
-            .end()
-            .text()
-            .replace(/\s+/g, " ")
-            .trim()
-            .slice(0, 100000),
+          text = extractPageText($),
           links = $("a[href]")
             .map((_, e) => {
-              const target = absolute($(e).attr("href"), url);
+              const target = absolute($(e).attr("href"), baseUrl);
               return target
                 ? {
                     url: target,
@@ -593,7 +654,7 @@ export async function executeCrawl(crawlId: string, rootInput: string, recoverRu
           hreflangs = $('link[rel="alternate"][hreflang]')
             .map((_, e) => ({
               lang: $(e).attr("hreflang")!,
-              url: absolute($(e).attr("href"), url)!,
+              url: absolute($(e).attr("href"), baseUrl)!,
             }))
             .get()
             .filter((x) => x.url),
@@ -639,7 +700,7 @@ export async function executeCrawl(crawlId: string, rootInput: string, recoverRu
                       const raw =
                         $(e).attr("src") ?? $(e).attr("href") ?? $(e).attr("data");
                       try {
-                        return raw ? new URL(raw, url).toString() : null;
+                        return raw ? new URL(raw, baseUrl).toString() : null;
                       } catch {
                         return null;
                       }
@@ -735,6 +796,8 @@ export async function executeCrawl(crawlId: string, rootInput: string, recoverRu
     });
     try { await crawler.run(); }
     finally { await queue.drop(); }
+    // A stopped batch leaves unstarted requests durable and resumable in the DB.
+    await db.crawlUrl.updateMany({ where: { crawlId, status: "PROCESSING" }, data: { status: "DISCOVERED" } });
     await counts(crawlId);
   }
   await counts(crawlId);

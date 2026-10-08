@@ -1,0 +1,32 @@
+﻿{
+    "date":  "2026-10-08",
+    "environment":  "Windows, real Crawlee 3.18.2, loopback HTTP, simulated Prisma writes",
+    "before":  {
+                   "mode":  "before",
+                   "wallMs":  44381,
+                   "cpuMs":  9563,
+                   "initialRssMiB":  164.109375,
+                   "peakRssMiB":  306.375,
+                   "peakHeapMiB":  160.55056762695312,
+                   "endHeapMiB":  160.4161376953125,
+                   "pages":  56,
+                   "discoveryWrites":  5256,
+                   "http429":  1,
+                   "http404":  2,
+                   "retryWaitMs":  2094
+               },
+    "after":  {
+                  "mode":  "after",
+                  "wallMs":  15739,
+                  "cpuMs":  9765,
+                  "initialRssMiB":  161.90234375,
+                  "peakRssMiB":  376.3125,
+                  "peakHeapMiB":  170.4521026611328,
+                  "endHeapMiB":  159.88143157958984,
+                  "pages":  56,
+                  "discoveryWrites":  109,
+                  "http429":  1,
+                  "http404":  1,
+                  "retryWaitMs":  5065
+              }
+}

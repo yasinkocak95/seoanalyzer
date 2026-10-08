@@ -437,7 +437,7 @@ export const tr = {
   "footer.how": "Nasıl çalışır?",
   "footer.faq": "Sık sorulan sorular",
   "footer.language": "Dil",
-  "footer.positioning": "SEO Analyzer — AI destekli SEO denetimi",
+  "footer.positioning": "AI destekli SEO denetimi",
   "footer.copyright": "Tüm hakları saklıdır.",
   "comparison.worsened": "Kötüleşen",
   "comparison.unverified": "Doğrulanamadı",

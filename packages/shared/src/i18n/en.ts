@@ -437,7 +437,7 @@ export const en = {
   "footer.how": "How it works",
   "footer.faq": "FAQ",
   "footer.language": "Language",
-  "footer.positioning": "SEO Analyzer — AI-assisted SEO auditing",
+  "footer.positioning": "AI-assisted SEO auditing",
   "footer.copyright": "All rights reserved.",
   "comparison.worsened": "Worsened",
   "comparison.unverified": "Not verified",

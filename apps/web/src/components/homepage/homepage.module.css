@@ -1,6 +1,7 @@
 /* The shared navigation is replaced only while this homepage is mounted. */
 :global(body):has(.landing) > :global(header) { display: none; }
 .landing { color: #475569; background: #fff; --home-heading: #0b1220; }
+.landing > main { padding-bottom: clamp(24px, 3vw, 40px); }
 .landing * { min-width: 0; }
 .landing a { text-decoration: none; }
 .landing a:focus-visible, .landing summary:focus-visible { outline: 3px solid #2563eb; outline-offset: 5px; border-radius: 6px; }
@@ -129,10 +130,10 @@
 .faqs svg { flex-shrink: 0; color: #64748b; }
 .faqs details[open] svg { transform: rotate(180deg); }
 .faqs details > p { font-size: 13px; line-height: 1.9; padding-bottom: 20px; }
-.scope { display: flex; align-items: flex-start; gap: 12px; padding: 20px 24px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; margin-bottom: 36px; }
-.scope svg { color: #64748b; flex-shrink: 0; margin-top: 1px; }
-.scope h2 { font-size: 12px; font-weight: 700; color: #0f172a; }
-.scope p { font-size: 12px; line-height: 1.8; margin-top: 4px; }
+.scope { display: flex; align-items: flex-start; gap: 14px; padding: 24px 28px; background: linear-gradient(120deg, #f3f7fd, #f8fafc); border: 1px solid #dce5f0; border-radius: 16px; box-shadow: 0 2px 8px #10203b04; margin-bottom: 0; }
+.scope svg { color: #2563eb; flex-shrink: 0; margin-top: 2px; }
+.scope h2 { font-size: 13px; font-weight: 700; color: #10203b; }
+.scope p { max-width: 1000px; font-size: 13px; line-height: 1.8; margin-top: 6px; color: #5f6f86; }
 @media (max-width: 1199px) {
   .navLinks { gap: 14px; }
   .newAnalysis { display: none; }
@@ -220,7 +221,7 @@
   .faqSection .icon { display: none; }
   .faqSection .eyebrow { margin-top: 0; }
   .faqs summary { font-size: 13px; }
-  .scope { padding: 17px; margin-bottom: 24px; }
+  .scope { padding: 20px; gap: 12px; }
 }
 @media (max-width: 380px) {
   .container { width: calc(100% - 28px); }
@@ -337,10 +338,9 @@
 .faqs summary:hover { color: #2563eb; }
 .faqs summary { padding-block: 18px; line-height: 1.6; }
 .faqs details > p { color: #5f6f86; }
-.scope { margin-bottom: 56px; border-radius: 14px; }
 @media(max-width:1199px) { .navbar { gap: 16px; } .navLinks { gap: 14px; } .navActions { gap: 12px; } .heroGrid { gap: 36px 30px; } .formCard { gap: 24px; padding: 26px; } .feature { padding: 22px; } }
 @media(max-width:1023px) { .heroGrid { padding-top: 60px; } .heroCopy { max-width: 720px; } .heroCopy h1 { max-width: 700px; font-size: clamp(44px,6.2vw,62px); } .formCard { grid-template-columns: 1fr; } .aiFeature { gap: 30px; padding: 32px; } .steps article { padding: 22px; } }
-@media(max-width:767px) { .navbar { min-height: 68px; } .navActions { gap: 10px; } .heroGrid { padding-block: 42px 30px; gap: 30px; } .heroCopy h1 { font-size: clamp(36px,8.8vw,52px); letter-spacing: -1.7px; } .description { font-size: 15px; } .heroActions { gap: 10px; margin-top: 26px; } .heroActions a { font-size: 13px; padding-inline: 17px; } .chips > span { font-size: 9px; padding: 5px 8px; } .checks li { font-size: 10px; } .formCard { padding: 22px; gap: 22px; } .formHeading h2 { font-size: 21px; } .formHeading div > p:last-child { font-size: 12px; } .form :global(.input),.form :global(.btn) { font-size: 13px; } .dashboardBody { padding: 16px; } .dashboardHeading h2 { font-size: 19px; } .features { padding-block: 32px 40px; } .feature { padding: 24px; } .aiFeature { grid-template-columns: 1fr; padding: 26px; gap: 24px; } .aiFeature h2 { font-size: 28px; } .analysisSection { padding-block: 24px 48px; } .analysisList { gap: 24px 18px; } .reportHeader { padding: 22px; } .reportTable td { padding-block: 16px; } .reportTable td strong { font-size: 11px; } .reportTable td > span:not(.severity) { font-size: 10px; } .stepsSection { padding-block: 48px; } .steps { gap: 14px; } .steps article { padding: 22px; grid-template-columns: 42px 1fr; } .steps h3 { font-size: 16px; } .steps p { font-size: 13px; } .faqSection { padding-block: 52px 36px; } .scope { margin-bottom: 32px; } }
+@media(max-width:767px) { .navbar { min-height: 68px; } .navActions { gap: 10px; } .heroGrid { padding-block: 42px 30px; gap: 30px; } .heroCopy h1 { font-size: clamp(36px,8.8vw,52px); letter-spacing: -1.7px; } .description { font-size: 15px; } .heroActions { gap: 10px; margin-top: 26px; } .heroActions a { font-size: 13px; padding-inline: 17px; } .chips > span { font-size: 9px; padding: 5px 8px; } .checks li { font-size: 10px; } .formCard { padding: 22px; gap: 22px; } .formHeading h2 { font-size: 21px; } .formHeading div > p:last-child { font-size: 12px; } .form :global(.input),.form :global(.btn) { font-size: 13px; } .dashboardBody { padding: 16px; } .dashboardHeading h2 { font-size: 19px; } .features { padding-block: 32px 40px; } .feature { padding: 24px; } .aiFeature { grid-template-columns: 1fr; padding: 26px; gap: 24px; } .aiFeature h2 { font-size: 28px; } .analysisSection { padding-block: 24px 48px; } .analysisList { gap: 24px 18px; } .reportHeader { padding: 22px; } .reportTable td { padding-block: 16px; } .reportTable td strong { font-size: 11px; } .reportTable td > span:not(.severity) { font-size: 10px; } .stepsSection { padding-block: 48px; } .steps { gap: 14px; } .steps article { padding: 22px; grid-template-columns: 42px 1fr; } .steps h3 { font-size: 16px; } .steps p { font-size: 13px; } .faqSection { padding-block: 52px 36px; } }
 @media(max-width:380px) { .analysisList { grid-template-columns: 1fr; } .navActions { gap: 7px; } .formCard { padding: 18px; } }
 
 /* Only the homepage header uses these sizes; shared branding is unchanged. */

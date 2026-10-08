@@ -31,24 +31,30 @@ export class TemplateSampler {
 
   /** Sürdürülen taramada bellek durumunu veritabanından yeniden kurar. */
   async load() {
-    const [templates, rows] = await Promise.all([
-      db.urlTemplate.findMany({ where: { crawlId: this.crawlId } }),
-      db.crawlUrl.findMany({
-        where: { crawlId: this.crawlId },
-        select: { normalized: true, status: true, template: true },
-      }),
-    ]);
+    const templates = await db.urlTemplate.findMany({ where: { crawlId: this.crawlId } });
     for (const t of templates) this.state.set(t.pattern, t.status);
-    for (const r of rows) {
-      this.known.add(r.normalized);
-      if (r.status === "EXCLUDED") continue;
-      if (r.template && this.state.has(r.template)) {
-        if (r.status !== "SKIPPED")
-          this.samples.set(r.template, (this.samples.get(r.template) ?? 0) + 1);
-      } else {
-        const p = templatePattern(r.normalized);
-        if (p) this.pending.set(p, (this.pending.get(p) ?? new Set()).add(r.normalized));
+    let cursor: string | undefined;
+    while (true) {
+      const rows = await db.crawlUrl.findMany({
+        where: { crawlId: this.crawlId },
+        select: { id: true, normalized: true, status: true, template: true },
+        take: 500,
+        orderBy: { id: "asc" },
+        ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
+      });
+      for (const r of rows) {
+        this.known.add(r.normalized);
+        if (r.status === "EXCLUDED") continue;
+        if (r.template && this.state.has(r.template)) {
+          if (r.status !== "SKIPPED")
+            this.samples.set(r.template, (this.samples.get(r.template) ?? 0) + 1);
+        } else {
+          const p = templatePattern(r.normalized);
+          if (p) this.pending.set(p, (this.pending.get(p) ?? new Set()).add(r.normalized));
+        }
       }
+      if (rows.length < 500) break;
+      cursor = rows.at(-1)!.id;
     }
   }
 
